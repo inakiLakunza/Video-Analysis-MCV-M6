@@ -78,3 +78,31 @@ def make_video(estimation):
         data = cv2.cvtColor(data, cv2.COLOR_RGB2GRAY)
         out.write(data)
     out.release()
+
+
+def compute_metric(mask1_list, mask2_list, threshold=0.5):
+    val = 0
+    for mask1 in mask1_list:
+        score = 0
+        for mask2 in mask2_list:
+            IoU = binaryMaskIOU(mask1, mask2)
+            if IoU > score:
+                score = IoU
+        if score > threshold:
+            val += 1
+    if len(mask1_list) > 0:
+        val = val / len(mask1_list)
+    else:
+        val = 0
+    return val
+
+
+def binaryMaskIOU(mask1, mask2):
+    mask1_area = np.count_nonzero(mask1 == 255)
+    mask2_area = np.count_nonzero(mask2 == 255)
+    intersection = np.count_nonzero(np.logical_and(mask1 == 255, mask2 == 255))
+    union = mask1_area+mask2_area-intersection
+    if union == 0: # Evitar dividir entre 0
+        return 0
+    iou = intersection/(union)
+    return iou

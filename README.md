@@ -14,4 +14,5 @@ python3 main.py
 
 ### Gaussian Modeling
 In green our predictions, in blue the ground truth.
+
 ![after](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/images/after_535.jpg)

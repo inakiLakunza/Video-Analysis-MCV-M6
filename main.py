@@ -3,6 +3,7 @@ import cv2
 import datetime
 import matplotlib.pyplot as plt
 import utils
+from tqdm import tqdm
 
 video_path = './AICity_data/train/S03/c010/vdo.avi'
 annotations_path = './ai_challenge_s03_c010-full_annotation.xml'
@@ -82,11 +83,11 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
     """
     gray_frame = (gray_frame * 255).astype(np.uint8)
 
-    plt.imsave(f'./pruebas_1_1/before_{frame_idx + inc}.jpg', gray_frame, cmap='gray')
+    #plt.imsave(f'./pruebas_1_1/before_{frame_idx + inc}.jpg', gray_frame, cmap='gray')
 
     # Opening
-    kernel = np.ones((3,3),np.uint8)
-    gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
+    # kernel = np.ones((3,3),np.uint8)
+    # gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
 
     # Connected components
     analysis = cv2.connectedComponentsWithStats(gray_frame, 4, cv2.CV_32S) 
@@ -94,12 +95,12 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
     output = np.zeros(gray_frame.shape, dtype="uint8")
 
     # Create mask1 and mask2 to compute metrics
-    pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
-    gt_mask = np.zeros(gray_frame.shape, dtype="uint8") # gt
+    pred_mask_list = []
 
     # Loop through each component 
     for i in range(1, totalLabels): 
         area = values[i, cv2.CC_STAT_AREA] 
+        pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
 
         if (area > 5_000) and (area < 250_000): 
             componentMask = (label_ids == i).astype("uint8") * 255
@@ -115,10 +116,17 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
             cv2.rectangle(color_frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
             cv2.rectangle(pred_mask, (x, y), (x + w, y + h), 255, -1)
 
+            #plt.imsave(f'./pruebas_1_1/pred_mask_{len(pred_mask_list)}.jpg', pred_mask, cmap="gray")
+
+            pred_mask_list.append(pred_mask)
+
     # Paint the GT Bounding boxes
+    gt_mask_list = []
+
     real_frame_idx = str(frame_idx + inc)
     if real_frame_idx in gt:
         for box in gt[real_frame_idx]:
+            gt_mask = np.zeros(gray_frame.shape, dtype="uint8") # gt
             xtl = int(float(box['xtl']))
             ytl = int(float(box['ytl']))
             xbr = int(float(box['xbr']))
@@ -126,37 +134,25 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
             
             cv2.rectangle(color_frame, (xtl, ytl), (xbr, ybr), (0, 0, 255), 3)
             cv2.rectangle(gt_mask, (xtl, ytl), (xbr, ybr), 255, -1)
+
+            #plt.imsave(f'./pruebas_1_1/gt_mask_{len(gt_mask_list)}.jpg', gt_mask, cmap="gray")
+
+            gt_mask_list.append(gt_mask)
     
-    IoU = binaryMaskIOU(pred_mask, gt_mask)
-    print(f"Frame {real_frame_idx} IoU = {IoU}")
+    # Compute metrics
+    precision = utils.compute_metric(pred_mask_list, gt_mask_list, threshold=0.5)
+    recall = utils.compute_metric(gt_mask_list, pred_mask_list, threshold=0.5)
 
-    plt.imsave(f'./pruebas_1_1/after_pred_mask_{frame_idx + inc}.jpg', pred_mask, cmap="gray")
-    plt.imsave(f'./pruebas_1_1/after_gt_mask_{frame_idx + inc}.jpg', gt_mask, cmap="gray")
+    # plt.imsave(f'./pruebas_1_1/after_pred_mask_{frame_idx + inc}.jpg', pred_mask, cmap="gray")
+    # plt.imsave(f'./pruebas_1_1/after_gt_mask_{frame_idx + inc}.jpg', gt_mask, cmap="gray")
 
-    plt.imsave(f'./pruebas_1_1/after_{frame_idx + inc}.jpg', color_frame)
+    #plt.imsave(f'./pruebas_1_1/after_{frame_idx + inc}.jpg', color_frame)
 
+    return precision, recall
 
-def binaryMaskIOU(mask1, mask2):
-    mask1_area = np.count_nonzero(mask1 == 255)
-    mask2_area = np.count_nonzero(mask2 == 255)
-    intersection = np.count_nonzero(np.logical_and(mask1 == 255, mask2 == 255))
-    union = mask1_area+mask2_area-intersection
-    if union == 0: # Evitar dividir entre 0
-        return 0
-    iou = intersection/(union)
-    return iou
-
-
-def MeanIOU(gt_dict, pred_dict):
-    result = 0
-    for name, mask in gt_dict.items():
-        result += binaryMaskIOU(gt_dict[name], pred_dict[name])
-    
-    result /= len(gt_dict)
-    return result
     
 
-def Gaussian_Estimation(video_path: str, annotations_path: str):
+def Gaussian_Estimation(video_path: str, annotations_path: str, alpha):
     gray_frames, color_frames = utils.read_video(video_path)
     print(f"gray_frames.shape: {gray_frames.shape} \t color_frames.shape: {color_frames.shape}")
 
@@ -170,12 +166,23 @@ def Gaussian_Estimation(video_path: str, annotations_path: str):
     mean_, std_ = mean_and_std(gray_frames_25)
     print(f"mean video: {mean_.shape} \t std video: {std_.shape}")
 
-    estimation = estimate_foreground(gray_frames_75, mean_, std_)
+    estimation = estimate_foreground(gray_frames_75, mean_, std_, alpha_=alpha)
     print(f"estimation video: {estimation.shape}")
 
-    # Separate objects
-    for frame_idx in range(5):
-        connected_components(frame_idx, color_frames_25.shape[0], estimation[frame_idx], color_frames_75[frame_idx], gt)
+    # Separate objects and compute metrics
+    precision_list = []
+    recall_list = []
+    for frame_idx in (pbar := tqdm(range(estimation.shape[0]))):
+        precision, recall = connected_components(frame_idx, color_frames_25.shape[0], estimation[frame_idx], color_frames_75[frame_idx], gt)
+        precision_list.append(precision)
+        recall_list.append(recall)
+        pbar.set_description(f"[alpha = {alpha}] Current AP {round(sum(precision_list) / len(precision_list), 2)}")
+
+    AP = sum(precision_list) / len(precision_list)
+    AR = sum(recall_list) / len(recall_list)
+
+    print(f"[alpha = {alpha}] Average Preicison = {AP}")
+    print(f"[alpha = {alpha}] Average Recall = {AR}")
 
     #utils.make_video(color_frames_75)
     #print(f"Video done.")
@@ -183,5 +190,7 @@ def Gaussian_Estimation(video_path: str, annotations_path: str):
 
 
 if __name__ == "__main__":
-    Gaussian_Estimation(video_path, annotations_path)
+    alphas = [2, 3, 4, 5, 6, 7, 8]
+    for alpha in alphas:
+        Gaussian_Estimation(video_path, annotations_path, alpha)
     

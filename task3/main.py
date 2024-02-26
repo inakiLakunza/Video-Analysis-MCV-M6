@@ -218,13 +218,15 @@ def state_of_the_art(vid_path, ind):
 
     
     elif ind==7:
-        use_rembg()
-        return 0
-    
-    # Train  the substractor with the first 25% frames
-    for frame in gray_frames_25: subs.apply(frame)
+        estimation = []
+        for frame in gray_frames:
+            estimation.append(use_rembg(frame))
+        
+    if ind in range(7):
+        # Train  the substractor with the first 25% frames
+        for frame in gray_frames_25: subs.apply(frame)
 
-    estimation = estimate_sota_foreground(subs, gray_frames_75, ind)
+        estimation = estimate_sota_foreground(subs, gray_frames_75, ind)
 
     # Separate objects and compute metrics
     precision_list = []
@@ -275,9 +277,25 @@ def estimate_sota_foreground(subs, frames, model_index):
     
 
 
-def use_rembg():
-    # to complete
-    pass
+def use_rembg(frame):
+    # Convert the input image to a numpy array
+    input_array = np.array(frame)
+
+    # Apply background removal using rembg
+    output_array = rembg.remove(input_array)
+    print(output_array.shape)
+
+    height, width = input_array.shape
+
+    estimation = [[False] * width for _ in range(height)]
+
+    for y in range(height):
+        for x in range(width):
+            if output_array[y][x].any() != 0:
+                estimation[y][x] = True
+    
+    return estimation
+
 
 
 def try_state_of_the_art(vid_path):
@@ -373,5 +391,5 @@ if __name__ == "__main__":
 
     vid_path = '/ghome/group07/test/AICity_data/train/S03/c010/vdo.avi'
     annotations_path = '/ghome/group07/test/ai_challenge_s03_c010-full_annotation.xml'
-    try_state_of_the_art(vid_path)
-    #state_of_the_art(vid_path, s_index)
+    #try_state_of_the_art(vid_path)
+    state_of_the_art(vid_path, s_index)

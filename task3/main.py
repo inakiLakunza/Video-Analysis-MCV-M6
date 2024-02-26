@@ -219,8 +219,11 @@ def state_of_the_art(vid_path, ind):
     
     elif ind==7:
         estimation = []
-        for frame in gray_frames:
-            estimation.append(use_rembg(frame))
+        for i in range(len(gray_frames)):
+            frame = gray_frames[i]
+            print(f"Working with frame {i} out of {len(gray_frames)} frames")
+            estimation.append(use_rembg(frame, i))
+        print("All estimations with the U-Net based model completed")
         
     if ind in range(7):
         # Train  the substractor with the first 25% frames
@@ -231,7 +234,9 @@ def state_of_the_art(vid_path, ind):
     # Separate objects and compute metrics
     precision_list = []
     recall_list = []
-    for frame_idx in (pbar := tqdm(range(estimation.shape[0]))):
+    #for frame_idx in (pbar := tqdm(range(estimation.shape[0]))):
+    for frame_idx in (range(estimation.shape[0])):
+        print(f"Computing precision and recall with frame {frame_idx}")
         precision, recall = connected_components(frame_idx, color_frames_25.shape[0], estimation[frame_idx], color_frames_75[frame_idx], gt)
         precision_list.append(precision)
         recall_list.append(recall)
@@ -277,13 +282,24 @@ def estimate_sota_foreground(subs, frames, model_index):
     
 
 
-def use_rembg(frame):
+def use_rembg(frame, i):
     # Convert the input image to a numpy array
     input_array = np.array(frame)
 
     # Apply background removal using rembg
-    output_array = rembg.remove(input_array)
-    print(output_array.shape)
+    output_array = rembg.remove(input_array, session=rembg_session, alpha_matting=True, alpha_matting_foreground_threshold=270,alpha_matting_background_threshold=20, alpha_matting_erode_size=11)
+
+    # SAVE OUTPUTS OF THE MODEL
+    #--------------------------------
+    # Create a PIL Image from the output array
+    output_image = Image.fromarray(output_array)
+
+    rgb_im = output_image.convert('RGB')
+
+    # Save the output image
+    save_path = rembg_output_path + "frame_" + str(i) + ".jpg"
+    rgb_im.save(save_path)
+    #------------------------------------------
 
     height, width = input_array.shape
 
@@ -385,11 +401,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     s_index = args.index
-
-
-
+    if s_index==7:
+        model_name = "unet"
+        rembg_session = rembg.new_session(model_name)
 
     vid_path = '/ghome/group07/test/AICity_data/train/S03/c010/vdo.avi'
     annotations_path = '/ghome/group07/test/ai_challenge_s03_c010-full_annotation.xml'
+    rembg_output_path = "/ghome/group07/test/task3/rembg_outputs/"
     #try_state_of_the_art(vid_path)
     state_of_the_art(vid_path, s_index)

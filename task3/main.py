@@ -1,5 +1,11 @@
 import numpy as np
 import cv2
+from cv2.bgsegm import createBackgroundSubtractorCNT
+from cv2.bgsegm import createBackgroundSubtractorGMG
+from cv2.bgsegm import createBackgroundSubtractorGSOC
+from cv2.bgsegm import createBackgroundSubtractorLSBP
+from cv2.bgsegm import createBackgroundSubtractorMOG
+
 import datetime
 import matplotlib.pyplot as plt
 import rembg
@@ -9,6 +15,7 @@ from tqdm import tqdm
 import pickle
 import os
 import argparse
+
 
 # NUMBER OF FRAMES IN THE FIRST 25%
 N_TRAIN_FRAMES = 535
@@ -21,7 +28,8 @@ MODEL_NAMES = {
     3: "KNN",
     4: "LSBP",
     5: "CNT",
-    6: "REMBG"
+    6: "GSOC",
+    7: "REMBG"
 }
 
 def read_video(vid_path: str):
@@ -200,14 +208,16 @@ def state_of_the_art(vid_path, ind):
     color_frames_25, color_frames_75 = utils.split_frames(color_frames)
 
     # Select substractor model
-    if ind==0:   subs = cv2.bgsegm.createBackgroundSubtractorMOG()
+    if ind==0:   subs = createBackgroundSubtractorMOG()
     elif ind==1: subs = cv2.createBackgroundSubtractorMOG2()
-    elif ind==2: subs = cv2.bgsegm.createBackgroundSubtractorGMG()
+    elif ind==2: subs = createBackgroundSubtractorGMG()
     elif ind==3: subs = cv2.createBackgroundSubtractorKNN()
-    elif ind==4: subs = cv2.bgsegm.createBackgroundSubtractorLSBP()
-    elif ind==5: subs = cv2.bgsegm.createBackgroundSubtractorCNT()
+    elif ind==4: subs = createBackgroundSubtractorLSBP()
+    elif ind==5: subs = createBackgroundSubtractorCNT()
+    elif ind==6: subs = createBackgroundSubtractorGSOC()
+
     
-    elif ind==6:
+    elif ind==7:
         use_rembg()
         return 0
     
@@ -233,11 +243,11 @@ def state_of_the_art(vid_path, ind):
     print(f"[Model name: {MODEL_NAMES[ind]}] Average Recall = {AR}")
 
     # Save as pkl so that we can later make plots
-    log_AP_name = './model_ltogs/AP_model_{MODEL_NAMES[ind]}.pkl'
+    log_AP_name = './model_logs/AP_model_'+str(MODEL_NAMES[ind])+'.pkl'
     with open(log_AP_name, 'wb') as file:
         pickle.dump({'precision_list': precision_list}, file)
     
-    log_AR_name = './model_logs/AR_model_{MODEL_NAMES[ind]}.pkl'
+    log_AR_name = './model_logs/AR_model_'+str(MODEL_NAMES[ind])+'.pkl'
     with open(log_AR_name, 'wb') as file:
         pickle.dump({'recall_list': recall_list}, file)
 
@@ -274,23 +284,23 @@ def try_state_of_the_art(vid_path):
     frames = read_video(vid_path)
     print(f"frames.shape: {frames.shape}")
 
-    #substractor1 = cv2.bgsegm.createBackgroundSubtractorMOG()    
-    #substractor2 = cv2.createBackgroundSubtractorMOG2()
-    #substractor3 = cv2.bgsegm.createBackgroundSubtractorGMG()
-    #substractor4 = cv2.createBackgroundSubtractorKNN() 
-    #substractor5 = cv2.bgsegm.createBackgroundSubtractorLSBP()
-    #substractor6 = cv2.bgsegm.createBackgroundSubtractorCNT()
+    substractor1 = cv2.bgsegm.createBackgroundSubtractorMOG()   
+    substractor2 = cv2.createBackgroundSubtractorMOG2()
+    substractor3 = cv2.bgsegm.createBackgroundSubtractorGMG()
+    substractor4 = cv2.createBackgroundSubtractorKNN() 
+    substractor5 = cv2.bgsegm.createBackgroundSubtractorLSBP()
+    substractor6 = cv2.bgsegm.createBackgroundSubtractorCNT()
 
     
     i=0
     for frame in frames:
 
-        if i==1200:
+        if i==400:
             
             sharp_img1 = substractor1.apply(frame)
             plt.imsave(f'prueba1_MOG.jpg', sharp_img1)
 
-            '''
+            
             sharp_img2 = substractor2.apply(frame)
             plt.imsave(f'prueba2.jpg', sharp_img2)
 
@@ -306,21 +316,16 @@ def try_state_of_the_art(vid_path):
             sharp_img6 = substractor6.apply(frame)
             plt.imsave(f'prueba6.jpg', sharp_img6)
             
-
-            sharp_img7 = substractor7.apply(frame)
-            plt.imsave(f'prueba7.jpg', sharp_img7)
-            '''
-
             break
             
         else: 
             substractor1.apply(frame)
-            #substractor2.apply(frame)
-            #substractor3.apply(frame)
-            #substractor4.apply(frame)
-            #substractor5.apply(frame)
-            #substractor6.apply(frame)
-            #substractor7.apply(frame)
+            substractor2.apply(frame)
+            substractor3.apply(frame)
+            substractor4.apply(frame)
+            substractor5.apply(frame)
+            substractor6.apply(frame)
+            substractor7.apply(frame)
 
         i+=1
 
@@ -351,7 +356,8 @@ if __name__ == "__main__":
      \n 3: KNN
      \n 4: LSBP
      \n 5: CNT
-     \n 6: rembg (special)
+     \n 6: GSOC
+     \n 7: rembg (special)
      """
 
     parser = argparse.ArgumentParser(description=description)
@@ -367,5 +373,5 @@ if __name__ == "__main__":
 
     vid_path = '/ghome/group07/test/AICity_data/train/S03/c010/vdo.avi'
     annotations_path = '/ghome/group07/test/ai_challenge_s03_c010-full_annotation.xml'
-    #try_state_of_the_art(vid_path)
-    state_of_the_art(vid_path, s_index)
+    try_state_of_the_art(vid_path)
+    #state_of_the_art(vid_path, s_index)

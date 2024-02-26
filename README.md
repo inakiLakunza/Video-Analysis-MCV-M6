@@ -13,6 +13,7 @@ python3 main.py
 ## Results
 
 ### Gaussian Modeling
-In green our predictions, in blue the ground truth.
+In green our predictions, in blue the ground truth. A sample of the first frames with a low alpha value of 2.
 
-![after](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/task1/images/after_535.jpg)
+![after](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/task1/gifs/init_alpha_2.gif)
+

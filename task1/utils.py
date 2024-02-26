@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import datetime
 from lxml import etree
+import matplotlib.pyplot as plt
 
 
 def read_video(vid_path: str):

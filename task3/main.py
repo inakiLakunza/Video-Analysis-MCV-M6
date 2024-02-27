@@ -10,11 +10,13 @@ import datetime
 import matplotlib.pyplot as plt
 import rembg
 from PIL import Image
-import utils
+from utils import *
 from tqdm import tqdm
 import pickle
 import os
 import argparse
+import glob
+import utils
 
 
 # NUMBER OF FRAMES IN THE FIRST 25%
@@ -31,167 +33,6 @@ MODEL_NAMES = {
     6: "GSOC",
     7: "REMBG"
 }
-
-def read_video(vid_path: str):
-    vid = cv2.VideoCapture(vid_path)
-    frames = []
-    while True:
-        ret, frame = vid.read()
-        if ret:
-            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frames.append(frame_gray)
-        else:
-            break
-    vid.release()
-    return np.array(frames)
-
-
-def estimate_foreground_sequential(frames, mean_, std_, alpha_ = 2):
-    """
-    I did this sequentially xd DO NOT USE THIS, use the vectorized version 
-    """
-    frames = frames[int(frames.shape[0] * 0.25):, :, :]
-    res = np.empty_like(frames, dtype=bool)
-
-    frames_, rows, cols, channels = frames.shape
-    for f in range(frames_):
-        for c in range(channels):
-            for i in range(rows):
-                for j in range(cols):
-                    pixel = frames[f, i, j, c] 
-                    if abs(pixel - mean_[i, j, c]) >= alpha_ * (std_[i, j, c] + 2):
-                        res[f, i, j, c] = 1
-                    else:
-                        res[f, i, j, c] = 0
-    return res
-
-
-def estimate_foreground(frames, mean_, std_, alpha_ = 2):
-    """
-    Compute estimation for the other 75% part of the video
-
-    Parameters
-        frames : np.ndarray([2141, 1080, 1920, 3])
-        mean : np.ndarray([1080, 1920, 3])
-        std : np.ndarray([1080, 1920, 3])
-        alpha : int parameter to decide
-    
-    Returns
-        condition : np.ndarray([1606, 1080, 1920, 3], dtype=bool)
-    """
-    frames = frames[int(frames.shape[0] * 0.25):, :, :]
-    estimation = np.abs(frames - mean_) >= (alpha_ * (std_ + 2))
-    return estimation.astype(bool)
-
-
-def make_video(estimation):
-    """
-    Make a .mp4 from the estimation
-    https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
-
-    Parameters
-        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=bool)
-    """
-    size = estimation.shape[1], estimation.shape[2]
-    duration = estimation.shape[0]
-    fps = 10
-    out = cv2.VideoWriter(f'./estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), False)
-    for i in range(duration):
-        data = (estimation[i] * 255).astype(np.uint8)
-        # I am converting the data to gray but we should look into this...
-        data = cv2.cvtColor(data, cv2.COLOR_RGB2GRAY)
-        out.write(data)
-    out.release()
-
-def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
-    """
-    Separate into objects.
-
-    He hecho que el ground truth sea un diccionario de frames,
-    y dentro de cada frames hay los bounding boxes.
-    (es una fumada el .xml q nos dan .......)
-    Por ejemplo:
-
-        frame["86"] = [
-            {xtl: _, ytl: _, xbr: _, ybr: _},
-            {xtl: _, ytl: _, xbr: _, ybr: _}
-        ]
-
-    Parameters:
-        frame_idx : int
-        inc : int   increment value because we are working with the last 75%, 
-                    our frame 0 is not the first frame of the video
-        gray_frame : np.ndarray([1080, 1920], dtype=bool)
-        color_frame : np.ndarray([1080, 1920, 3], dtype=uint8)
-    """
-    gray_frame = (gray_frame * 255).astype(np.uint8)
-
-    #plt.imsave(f'./pruebas_1_1/before_{frame_idx + inc}.jpg', gray_frame, cmap='gray')
-
-    # Opening
-    # kernel = np.ones((3,3),np.uint8)
-    # gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
-
-    # Connected components
-    analysis = cv2.connectedComponentsWithStats(gray_frame, 4, cv2.CV_32S) 
-    (totalLabels, label_ids, values, centroid) = analysis 
-    output = np.zeros(gray_frame.shape, dtype="uint8")
-
-    # Create mask1 and mask2 to compute metrics
-    pred_mask_list = []
-
-    # Loop through each component 
-    for i in range(1, totalLabels): 
-        area = values[i, cv2.CC_STAT_AREA] 
-        pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
-
-        if (area > 5_000) and (area < 250_000): 
-            componentMask = (label_ids == i).astype("uint8") * 255
-            output = cv2.bitwise_or(output, componentMask)
-
-            # Bounding box
-            x = values[i, cv2.CC_STAT_LEFT]
-            y = values[i, cv2.CC_STAT_TOP]
-            w = values[i, cv2.CC_STAT_WIDTH]
-            h = values[i, cv2.CC_STAT_HEIGHT]
-            area = values[i, cv2.CC_STAT_AREA]
-            (cX, cY) = centroid[i]
-            cv2.rectangle(color_frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
-            cv2.rectangle(pred_mask, (x, y), (x + w, y + h), 255, -1)
-
-            #plt.imsave(f'./pruebas_1_1/pred_mask_{len(pred_mask_list)}.jpg', pred_mask, cmap="gray")
-
-            pred_mask_list.append(pred_mask)
-
-    # Paint the GT Bounding boxes
-    gt_mask_list = []
-
-    real_frame_idx = str(frame_idx + inc)
-    if real_frame_idx in gt:
-        for box in gt[real_frame_idx]:
-            gt_mask = np.zeros(gray_frame.shape, dtype="uint8") # gt
-            xtl = int(float(box['xtl']))
-            ytl = int(float(box['ytl']))
-            xbr = int(float(box['xbr']))
-            ybr = int(float(box['ybr']))
-            
-            cv2.rectangle(color_frame, (xtl, ytl), (xbr, ybr), (0, 0, 255), 3)
-            cv2.rectangle(gt_mask, (xtl, ytl), (xbr, ybr), 255, -1)
-
-            #plt.imsave(f'./pruebas_1_1/gt_mask_{len(gt_mask_list)}.jpg', gt_mask, cmap="gray")
-
-            gt_mask_list.append(gt_mask)
-    
-    # Compute metrics
-    precision = utils.compute_metric(pred_mask_list, gt_mask_list, threshold=0.5)
-    recall = utils.compute_metric(gt_mask_list, pred_mask_list, threshold=0.5)
-
-    # plt.imsave(f'./pruebas_1_1/after_pred_mask_{frame_idx + inc}.jpg', pred_mask, cmap="gray")
-    # plt.imsave(f'./pruebas_1_1/after_gt_mask_{frame_idx + inc}.jpg', gt_mask, cmap="gray")
-
-    #plt.imsave(f'./pruebas_1_1/after_{frame_idx + inc}.jpg', color_frame)
-
-    return precision, recall
 
 
 def state_of_the_art(vid_path, ind):
@@ -218,11 +59,15 @@ def state_of_the_art(vid_path, ind):
 
     
     elif ind==7:
-        estimation = []
-        for i in range(len(gray_frames)):
-            frame = gray_frames[i]
-            print(f"Working with frame {i} out of {len(gray_frames)} frames")
-            estimation.append(use_rembg(frame, i))
+        # SAVE ALL ESTIMATIONS OF THE REMBG OUTPUT - DONE
+        #-------------------------------------------------
+        #for i in range(len(gray_frames)):
+        #    frame = gray_frames[i]
+        #    print(f"Working with frame {i} out of {len(gray_frames)} frames")
+        #    estimation.append(use_rembg(frame, i))
+        #-------------------------------------------------------------
+
+        estimation = use_rembg_outs_for_estimation(rembg_outs)
         print("All estimations with the U-Net based model completed")
         
     if ind in range(7):
@@ -273,7 +118,7 @@ def estimate_sota_foreground(subs, frames, model_index):
         if len(single_est.shape)==3:
             single_est = cv2.cvtColor(single_est, cv2.COLOR_RGB2GRAY)
             
-            _, single_est = cv2.threshold(single_est, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            _, single_est = cv2.threshold(single_est, 200, 255, cv2.THRESH_BINARY)
     
         boolean_est = single_est.astype(bool)
         estimation.append(boolean_est)
@@ -281,8 +126,31 @@ def estimate_sota_foreground(subs, frames, model_index):
     return np.array(estimation)
     
 
+def use_rembg_outs_for_estimation(path):
+    
+    estimations = []
+    for i in range(2141):
+        img_path = path+"/frame_"+str(i)+".jpg"
+        print(f"Analyzing frame: {i}")
+        im = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
-def use_rembg(frame, i):
+        height, width = im.shape
+
+        #single_estimation = [[False] * width for _ in range(height)]
+
+        #for y in range(height):
+        #    for x in range(width):
+        #        if im[y][x] != 0:
+        #            single_estimation[y][x] = True
+
+        single_estimation = [[im[y][x] != 0 for x in range(width)] for y in range(height)]
+
+
+        estimations.append(single_estimation)
+    return np.array(estimations)
+
+
+def create_rembg_outs(frame, i):
     # Convert the input image to a numpy array
     input_array = np.array(frame)
 
@@ -301,67 +169,8 @@ def use_rembg(frame, i):
     rgb_im.save(save_path)
     #------------------------------------------
 
-    height, width = input_array.shape
-
-    estimation = [[False] * width for _ in range(height)]
-
-    for y in range(height):
-        for x in range(width):
-            if output_array[y][x].any() != 0:
-                estimation[y][x] = True
-    
-    return estimation
 
 
-
-def try_state_of_the_art(vid_path):
-    frames = read_video(vid_path)
-    print(f"frames.shape: {frames.shape}")
-
-    substractor1 = cv2.bgsegm.createBackgroundSubtractorMOG()   
-    substractor2 = cv2.createBackgroundSubtractorMOG2()
-    substractor3 = cv2.bgsegm.createBackgroundSubtractorGMG()
-    substractor4 = cv2.createBackgroundSubtractorKNN() 
-    substractor5 = cv2.bgsegm.createBackgroundSubtractorLSBP()
-    substractor6 = cv2.bgsegm.createBackgroundSubtractorCNT()
-
-    
-    i=0
-    for frame in frames:
-
-        if i==400:
-            
-            sharp_img1 = substractor1.apply(frame)
-            plt.imsave(f'prueba1_MOG.jpg', sharp_img1)
-
-            
-            sharp_img2 = substractor2.apply(frame)
-            plt.imsave(f'prueba2.jpg', sharp_img2)
-
-            sharp_img3 = substractor3.apply(frame)
-            plt.imsave(f'prueba3.jpg', sharp_img3)
-
-            sharp_img4 = substractor4.apply(frame)
-            plt.imsave(f'prueba4.jpg', sharp_img4)
-
-            sharp_img5 = substractor5.apply(frame)
-            plt.imsave(f'prueba5.jpg', sharp_img5)
-
-            sharp_img6 = substractor6.apply(frame)
-            plt.imsave(f'prueba6.jpg', sharp_img6)
-            
-            break
-            
-        else: 
-            substractor1.apply(frame)
-            substractor2.apply(frame)
-            substractor3.apply(frame)
-            substractor4.apply(frame)
-            substractor5.apply(frame)
-            substractor6.apply(frame)
-            substractor7.apply(frame)
-
-        i+=1
 
     '''
     # Convert the input image to a numpy array
@@ -402,11 +211,12 @@ if __name__ == "__main__":
 
     s_index = args.index
     if s_index==7:
-        model_name = "unet"
-        rembg_session = rembg.new_session(model_name)
+        # REMBG OUTPUTS SAVED ALREADY
+        #model_name = "unet"
+        #rembg_session = rembg.new_session(model_name)
+        rembg_outs = '/ghome/group07/test/task3/rembg_outputs'
 
     vid_path = '/ghome/group07/test/AICity_data/train/S03/c010/vdo.avi'
     annotations_path = '/ghome/group07/test/ai_challenge_s03_c010-full_annotation.xml'
     rembg_output_path = "/ghome/group07/test/task3/rembg_outputs/"
-    #try_state_of_the_art(vid_path)
     state_of_the_art(vid_path, s_index)

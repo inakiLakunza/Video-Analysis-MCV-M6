@@ -3,6 +3,7 @@ import cv2
 import datetime
 from lxml import etree
 import matplotlib.pyplot as plt
+import random
 
 
 def read_video(vid_path: str):
@@ -58,7 +59,8 @@ def split_frames(frames):
     """
     Returns 25% and 75% split partition of frames.
     """
-    return frames[:int(frames.shape[0] * 0.25), :, :], frames[int(frames.shape[0] * 0.25):, :, :]
+    split = int(frames.shape[0] * 0.25)
+    return frames[:split], frames[split:]
 
 
 def make_video(estimation):
@@ -67,35 +69,18 @@ def make_video(estimation):
     https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
 
     Parameters
-        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=bool)
+        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=uint8)
     """
     size = estimation.shape[1], estimation.shape[2]
     duration = estimation.shape[0]
     fps = 10
-    out = cv2.VideoWriter(f'./estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), False)
+    out = cv2.VideoWriter(f'./estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), True)
     for i in range(duration):
-        data = (estimation[i] * 255).astype(np.uint8)
+        data = (estimation[i]).astype(np.uint8)
         # I am converting the data to gray but we should look into this...
-        data = cv2.cvtColor(data, cv2.COLOR_RGB2GRAY)
+        data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
         out.write(data)
     out.release()
-
-
-def compute_metric(mask1_list, mask2_list, threshold=0.5):
-    val = 0
-    for mask1 in mask1_list:
-        score = 0
-        for mask2 in mask2_list:
-            IoU = binaryMaskIOU(mask1, mask2)
-            if IoU > score:
-                score = IoU
-        if score > threshold:
-            val += 1
-    if len(mask1_list) > 0:
-        val = val / len(mask1_list)
-    else:
-        val = 0
-    return val
 
 
 def binaryMaskIOU(mask1, mask2):
@@ -107,3 +92,46 @@ def binaryMaskIOU(mask1, mask2):
         return 0
     iou = intersection/(union)
     return iou
+
+
+# Thanks Team 5 and FAIR!
+def compute_ap(gt_boxes, pred_boxes):
+    # Initialize variables
+    tp = np.zeros(len(pred_boxes))
+    fp = np.zeros(len(pred_boxes))
+    gt_matched = np.zeros(len(gt_boxes))
+    if len(pred_boxes) == 0 and len(gt_boxes) == 0:
+        return 1.
+
+    # Iterate over the predicted boxes
+    for i, pred_box in enumerate(pred_boxes):
+        ious = [binaryMaskIOU(pred_box, gt_box) for gt_box in gt_boxes]
+        if len(ious) == 0:
+            fp[i] = 1
+            continue
+        max_iou = max(ious)
+        max_iou_idx = ious.index(max_iou)
+
+        if max_iou >= 0.5 and not gt_matched[max_iou_idx]:
+            tp[i] = 1
+            gt_matched[max_iou_idx] = 1
+        else:
+            fp[i] = 1
+
+    tp = np.cumsum(tp)
+    fp = np.cumsum(fp)
+    recall = tp / len(gt_boxes)
+    precision = tp / (tp + fp)
+
+    # Generate graph with the 11-point interpolated precision-recall curve
+    recall_interp = np.linspace(0, 1, 11)
+    precision_interp = np.zeros(11)
+    for i, r in enumerate(recall_interp):
+        array_precision = precision[recall >= r]
+        if len(array_precision) == 0:
+            precision_interp[i] = 0
+        else:
+            precision_interp[i] = max(precision[recall >= r])
+
+    ap = np.mean(precision_interp)
+    return ap

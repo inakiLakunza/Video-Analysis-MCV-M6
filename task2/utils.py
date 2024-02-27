@@ -48,7 +48,7 @@ def compute_ap(gt_boxes, pred_boxes):
     gt_matched = np.zeros(len(gt_boxes))
     if len(pred_boxes) == 0 and len(gt_boxes) == 0:
         return 1.
-        
+
     # Iterate over the predicted boxes
     for i, pred_box in enumerate(pred_boxes):
         ious = [binaryMaskIOU(pred_box, gt_box) for gt_box in gt_boxes]
@@ -105,6 +105,24 @@ def compute_weighted_avg(matrix:np.ndarray, weights:np.ndarray):
     return media_ponderada
 
 
+def compute_gaussian_weighted_avg(matrix: np.ndarray, sigma: float = 1.2):
+    n = len(matrix)
+    if n > 10:
+        matrix = matrix[:10]
+
+    # Create weights based on a Gaussian distribution centered at the midpoint
+    half_index = n // 2
+    weights = np.exp(-0.5 * ((np.arange(n) - half_index) / sigma) ** 2)
+
+    # Normalize weights to sum up to 1
+    weights /= np.sum(weights)
+
+    # Calculate the weighted average
+    weighted_avg = np.average(matrix, weights=weights, axis=0)
+
+    return weighted_avg
+
+
 def read_annotations(annotations_path: str):
     """
     Function to read the GT annotations from ai_challenge_s03_c010-full_annotation.xml
@@ -144,25 +162,33 @@ def split_frames(frames):
     return frames[:int(frames.shape[0] * 0.25)], frames[int(frames.shape[0] * 0.25):]
 
 
-def make_video(estimation):
+def make_video_from_images(image_path):
     """
-    Make a .mp4 from the estimation
-    https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
+    Make a .mp4 from images with background subtraction
 
-    Parameters
-        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=bool)
+    Parameters:
+        image_path (str): Path where the images with background subtraction are stored
     """
-    size = estimation.shape[1], estimation.shape[2]
-    duration = estimation.shape[0]
+    images = sorted(os.listdir(image_path))
+    if not images:
+        print("No images found in the specified path.")
+        return
+    
+    image_files = [os.path.join(image_path, img) for img in images]
+    # Load the first image to get size information
+    first_image = cv2.imread(image_files[0])
+    size = (first_image.shape[1], first_image.shape[0])
+    
     fps = 10
-    out = cv2.VideoWriter(f'./estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), False)
-    for i in range(duration):
-        data = (estimation[i] * 255).astype(np.uint8)
-        # I am converting the data to gray but we should look into this...
-        data = cv2.cvtColor(data, cv2.COLOR_RGB2GRAY)
-        out.write(data)
-    out.release()
+    out = cv2.VideoWriter(f'./estimation_alpha3_5_roch_0.3.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 1,size)
 
+    for image_file in image_files:
+        image = cv2.imread(image_file)
+        # Convert the image to grayscale
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        out.write(gray_image)
+
+    out.release()
 
 def compute_metric(mask1_list, mask2_list, threshold=0.5):
     val = 0
@@ -207,14 +233,43 @@ def save_img(img, rho, idx, directorio='./images/pruebas_means'):
     Nada. La función guarda la imagen en el directorio especificado.
     """
     # Nombre del archivo de imagen
+    os.makedirs(directorio, exist_ok = True)
+
     filename_mean = f'result_{str(rho)}_{idx}.png'
 
     # Guardar la imagen usando OpenCV
     cv2.imwrite(os.path.join(directorio, filename_mean), img.astype("uint8"))
 
+def binaryMaskIOU(mask1, mask2):
+    mask1_area = np.count_nonzero(mask1 == 255)
+    mask2_area = np.count_nonzero(mask2 == 255)
+    intersection = np.count_nonzero(np.logical_and(mask1 == 255, mask2 == 255))
+    union = mask1_area+mask2_area-intersection
+    if union == 0: # Evitar dividir entre 0
+        return 0
+    iou = intersection/(union)
+    return iou
+
+
+def MeanIOU(gt_dict, pred_dict):
+    result = 0
+    for name, mask in gt_dict.items():
+        result += binaryMaskIOU(gt_dict[name], pred_dict[name])
+    
+    result /= len(gt_dict)
+    return result
 
 
 def calcular_pesos_exponenciales(num_iterations, decay:float=0.7):
     pesos = np.exp(np.linspace(-decay, 0, num_iterations))
     pesos = pesos / np.sum(pesos)  # Normalizar los pesos para que sumen 1
     return pesos
+
+
+
+if __name__ == "__main__":
+    import os
+    import pickle
+    import matplotlib.pyplot as plt
+
+    make_video_from_images("images/pruebas_foreground_0.3_3.5")

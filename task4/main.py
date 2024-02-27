@@ -91,7 +91,8 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
     """
     gray_frame = (gray_frame * 255).astype(np.uint8)
 
-   
+    # Median filter
+    #gray_frame = cv2.medianBlur(gray_frame, 3)
 
     # Closing
     #kernel = np.ones((35,35),np.uint8)
@@ -198,6 +199,7 @@ def Gaussian_Estimation(video_path: str, annotations_path: str, alpha, color_spa
     AR = sum(recall_list) / len(recall_list)
 
     print(f"Color space: {color_space}")
+    print(f"Min area: {min_area}")
     print(f"[alpha = {alpha}] Average Preicison = {AP}")
     print(f"[alpha = {alpha}] Average Recall = {AR}")
 
@@ -211,8 +213,9 @@ def Gaussian_Estimation(video_path: str, annotations_path: str, alpha, color_spa
 if __name__ == "__main__":
     alphas = [2,3,4,5,6,7]
     color_space = ['RGB','HSV','Lab','YUV']
+    min_area = 2000
     #for color in color_space:
     #for alpha in alphas:
-    Gaussian_Estimation(video_path, annotations_path, 1, 'Lab')
+    Gaussian_Estimation(video_path, annotations_path, 1, 'YUV')
     
     

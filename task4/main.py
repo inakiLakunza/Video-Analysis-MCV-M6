@@ -213,6 +213,6 @@ if __name__ == "__main__":
     color_space = ['RGB','HSV','Lab','YUV']
     #for color in color_space:
     #for alpha in alphas:
-    Gaussian_Estimation(video_path, annotations_path, 1, 'YUV')
+    Gaussian_Estimation(video_path, annotations_path, 1, 'Lab')
     
     

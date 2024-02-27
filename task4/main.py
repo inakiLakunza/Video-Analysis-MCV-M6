@@ -96,7 +96,9 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
     # Closing
     #kernel = np.ones((35,35),np.uint8)
     #gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_CLOSE, kernel)
-    #plt.imsave(f'./pruebas_3/before_{frame_idx + inc}.jpg', gray_frame, cmap='gray')
+    #plt.imsave(f'./pruebas_3/before_{frame_idx + inc}_R.jpg', gray_frame[:,:,0], cmap='gray')
+    #plt.imsave(f'./pruebas_3/before_{frame_idx + inc}_G.jpg', gray_frame[:,:,1], cmap='gray')
+    #plt.imsave(f'./pruebas_3/before_{frame_idx + inc}_B.jpg', gray_frame[:,:,2], cmap='gray')
     # Connected components
     analysis = cv2.connectedComponentsWithStats(gray_frame, 4, cv2.CV_32S) 
     (totalLabels, label_ids, values, centroid) = analysis 
@@ -152,8 +154,8 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
             gt_mask_list.append(gt_mask)
     
     # Compute metrics
-    precision = utils.compute_metric(pred_mask_list, gt_mask_list, threshold=0.5)
-    recall = utils.compute_metric(gt_mask_list, pred_mask_list, threshold=0.5)
+    precision = utils.compute_ap(gt_mask_list, pred_mask_list)
+    recall = utils.compute_ap(pred_mask_list, gt_mask_list)
 
     # plt.imsave(f'./pruebas_1_1/after_pred_mask_{frame_idx + inc}.jpg', pred_mask, cmap="gray")
     # plt.imsave(f'./pruebas_1_1/after_gt_mask_{frame_idx + inc}.jpg', gt_mask, cmap="gray")
@@ -186,7 +188,7 @@ def Gaussian_Estimation(video_path: str, annotations_path: str, alpha, color_spa
     precision_list = []
     recall_list = []
     for frame_idx in (pbar := tqdm(range(estimation.shape[0]))):
-    #for frame_idx in (pbar := tqdm(range(10))):
+    #for frame_idx in (pbar := tqdm(range(1))):
         precision, recall = connected_components(frame_idx, color_frames_25.shape[0], estimation[frame_idx], color_frames_75[frame_idx], gt, rgb_frames_75[frame_idx])
         precision_list.append(precision)
         recall_list.append(recall)
@@ -209,8 +211,8 @@ def Gaussian_Estimation(video_path: str, annotations_path: str, alpha, color_spa
 if __name__ == "__main__":
     alphas = [2,3,4,5,6,7]
     color_space = ['RGB','HSV','Lab','YUV']
-    for color in color_space:
-        for alpha in alphas:
-            Gaussian_Estimation(video_path, annotations_path, alpha, color)
+    #for color in color_space:
+    #for alpha in alphas:
+    Gaussian_Estimation(video_path, annotations_path, 1, 'YUV')
     
     

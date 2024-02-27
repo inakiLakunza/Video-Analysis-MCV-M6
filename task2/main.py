@@ -4,7 +4,7 @@ import datetime
 import matplotlib.pyplot as plt
 import utils
 import tqdm 
-
+from utils import *
 
 from typing import *
 
@@ -63,7 +63,7 @@ def estimate_foreground(frames, mean_, std_, alpha_ = 2):
     return estimation.astype(bool)
 
 
-def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
+def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame):
     """
     Separate into objects.
 
@@ -85,29 +85,34 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
         color_frame : np.ndarray([1080, 1920, 3], dtype=uint8)
     """
     gray_frame = (gray_frame * 255).astype(np.uint8)
-
-    plt.imsave(f'./pruebas_1_1/before_{frame_idx + inc}.jpg', gray_frame, cmap='gray')
-
-    # Opening
-    kernel = np.ones((3,3),np.uint8)
+    gray_frame = cv2.medianBlur(gray_frame, 5)
+    # Closing
+    kernel = np.ones((7,7),np.uint8)
     gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
+    gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_CLOSE, kernel)
 
+    if frame_idx > 100:
+        plt.imshow(gray_frame, cmap="gray")
+        plt.show()
+    #plt.imsave(f'./pruebas_3/before_{frame_idx + inc}.jpg', gray_frame, cmap='gray')
     # Connected components
     analysis = cv2.connectedComponentsWithStats(gray_frame, 4, cv2.CV_32S) 
     (totalLabels, label_ids, values, centroid) = analysis 
     output = np.zeros(gray_frame.shape, dtype="uint8")
 
     # Create mask1 and mask2 to compute metrics
-    pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
-    gt_mask = np.zeros(gray_frame.shape, dtype="uint8") # gt
+    pred_mask_list = []
 
     # Loop through each component 
     for i in range(1, totalLabels): 
         area = values[i, cv2.CC_STAT_AREA] 
+        pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
+
 
         if (area > 5_000) and (area < 250_000): 
             componentMask = (label_ids == i).astype("uint8") * 255
             output = cv2.bitwise_or(output, componentMask)
+
 
             # Bounding box
             x = values[i, cv2.CC_STAT_LEFT]
@@ -117,27 +122,42 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
             area = values[i, cv2.CC_STAT_AREA]
             (cX, cY) = centroid[i]
             cv2.rectangle(color_frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
+            cv2.rectangle(rgb_frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
             cv2.rectangle(pred_mask, (x, y), (x + w, y + h), 255, -1)
 
+            #plt.imsave(f'./pruebas_1_1/pred_mask_{len(pred_mask_list)}.jpg', pred_mask, cmap="gray")
+
+            pred_mask_list.append(pred_mask)
+
     # Paint the GT Bounding boxes
+    gt_mask_list = []
+
     real_frame_idx = str(frame_idx + inc)
     if real_frame_idx in gt:
         for box in gt[real_frame_idx]:
+            gt_mask = np.zeros(gray_frame.shape, dtype="uint8") # gt
             xtl = int(float(box['xtl']))
             ytl = int(float(box['ytl']))
             xbr = int(float(box['xbr']))
             ybr = int(float(box['ybr']))
             
             cv2.rectangle(color_frame, (xtl, ytl), (xbr, ybr), (0, 0, 255), 3)
+            cv2.rectangle(rgb_frame, (xtl, ytl), (xbr, ybr), (0, 0, 255), 3)
             cv2.rectangle(gt_mask, (xtl, ytl), (xbr, ybr), 255, -1)
+
+            #plt.imsave(f'./pruebas_1_1/gt_mask_{len(gt_mask_list)}.jpg', gt_mask, cmap="gray")
+
+            gt_mask_list.append(gt_mask)
     
-    IoU = binaryMaskIOU(pred_mask, gt_mask)
-    print(f"Frame {real_frame_idx} IoU = {IoU}")
+    plt.imshow(rgb_frame)
+    
+    filename = f'result_{frame_idx}.png'  # Nombre del archivo de imagen
+    cv2.imwrite(os.path.join('./images/results', filename), (rgb_frame).astype("uint8"))
+    # Compute metrics
+    AP = utils.compute_ap(gt_mask_list, pred_mask_list)
+    
 
-    plt.imsave(f'./pruebas_1_1/after_pred_mask_{frame_idx + inc}.jpg', pred_mask, cmap="gray")
-    plt.imsave(f'./pruebas_1_1/after_gt_mask_{frame_idx + inc}.jpg', gt_mask, cmap="gray")
-
-    plt.imsave(f'./pruebas_1_1/after_{frame_idx + inc}.jpg', color_frame)
+    return AP, pred_mask_list
 
 
 def binaryMaskIOU(mask1, mask2):
@@ -185,26 +205,59 @@ def Gaussian_Estimation(video_path: str, annotations_path: str):
     return mean_, std_
     #utils.make_video(color_frames_75)
     #print(f"Video done.")
+  
+
+def fit_(video, N_iterations:int,  size:tuple):
+
+
+    mean =  np.zeros(size)
+    std = np.zeros(size)
+    for idx in tqdm.tqdm(range(N_iterations), desc="Fitting the mean and standard deviation at the beggining"):
+
+        _, frame = video.read()
+        
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        deviation_avg = frame - mean
+
+        mean += (deviation_avg / (idx + 1))
+        deviation_frame = (frame - mean)
+
+        std += (deviation_avg * deviation_frame)
+
+    std = np.sqrt(std / (idx +1))
+
+    print("Storing COmputed Mean and Standard deviation in the first 25% of the video")
+
+    cv2.imwrite(os.path.join('./images/pruebas', "mean_25.jpg"), mean.astype("uint8"))
+    cv2.imwrite(os.path.join('./images/pruebas', "std_25.jpg"), std.astype("uint8"))
     
-    
-def Adaptive_Gaussian_Estimation(video_path: str, annotations_path:str, _window:int=4, rho:float=0.25, extract_by_mean:bool = False):
+    return mean , std
+
+
+
+def Adaptive_Gaussian_Estimation(video_path: str, annotations_path:str, rho:float=0.25, alpha:int=2):
     
     evol_means = []
     evol_std = []
-    print("gola")
-    gray_frames, color_frames = utils.read_video(video_path, max_frames=500)
-    
-    
-    print(f"gray_frames.shape: {gray_frames.shape} \t color_frames.shape: {color_frames.shape}")
-    gt = utils.read_annotations(annotations_path)
-    
-    # Split 25-75 frames
-    gray_frames_25, gray_frames_75 = utils.split_frames(gray_frames)
-    color_frames_25, color_frames_75 = utils.split_frames(color_frames)
+    evol_foregrounds = []
+    evol_ap = []
 
+    vid = cv2.VideoCapture(video_path)
+    N = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+    W = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+    H = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    SIZE = (H, W)
+    N_25 = int(0.25*N)
+    N_75 = N-N_25
+
+    
+    print(f"gray_frames.shape: {N}")
+    gt = utils.read_annotations(annotations_path)
 
     # Background modeling
-    mean_, std_ = mean_and_std(gray_frames_25)
+    mean_, std_ = fit_(video=vid, N_iterations=N_25, size=SIZE)
 
     # evolution of the means and the standard deviations
     evol_means.append(mean_)
@@ -212,76 +265,64 @@ def Adaptive_Gaussian_Estimation(video_path: str, annotations_path:str, _window:
     
     print(f"mean video: {mean_.shape} \t std video: {std_.shape}")
     
-    # frames = 2141
-    for idx in tqdm.tqdm(range(0, gray_frames_75.shape[0], _window), desc="Estimating Foreground"):
-        if idx + 10 > gray_frames_75.shape[0]:
-            set_indexes = np.arange(start=idx, stop=gray_frames_75.shape[0])
-        else: 
-            set_indexes = np.arange(start=idx, stop=idx+_window)
+    init_frame_id = int(vid.get(cv2.CAP_PROP_POS_FRAMES))
     
-        # get the last adapated mean and std
-        last_mean = evol_means[-1]
-        last_std = evol_std[-1] 
-        
-        if extract_by_mean is True:
-            I = np.mean(gray_frames_75[set_indexes])
-        else:
-            I = (gray_frames_75[set_indexes[-1]])
-        
-        
-        # SUM all the variations over the window
-        estimated_foregrounds = estimate_foreground(frames=I, mean_=last_mean, std_=last_std)
-        
+    # frames = 2141
+    for idx in (pbar:= tqdm.tqdm(range(200), desc="Estimating Foreground")):
+        _, color_frame = vid.read()
+        frame = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)
+        rgb_frame = cv2.cvtColor(color_frame, cv2.COLOR_BGR2RGB)
+
+        weights = (calcular_pesos_exponenciales(len(evol_means))) if len(evol_means) <10 else calcular_pesos_exponenciales(10)
+
+        mean_with_to_estimate =compute_weighted_avg(evol_means, weights) #np.mean(np.array(evol_means) * weights.reshape((len(weights), 1, 1)))
+        std_with_to_estimate = compute_weighted_avg(evol_std, weights) #evol_std[-1]#np.mean(np.array(evol_std) * weights.reshape((len(weights), 1, 1)))
+
+        estimated_foregrounds = estimate_foreground(frames=frame, mean_=mean_with_to_estimate, std_=std_with_to_estimate, alpha_=alpha)
+        save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = 'images/pruebas_foreground')
+
         # Compute the mean  and std by the variations of the window
-        mean = np.where(estimated_foregrounds, last_mean, (rho * I) + (1-rho) * last_mean)   
-        std = np.where(estimated_foregrounds, last_std, np.sqrt(rho * (I - mean) ** 2 + (1 - rho) * last_std ** 2))
+        mean = np.where(estimated_foregrounds, mean_with_to_estimate, (rho * frame) + (1-rho) * mean_with_to_estimate)   
+        save_img(img=mean, rho=rho, idx=idx, directorio="images/pruebas_means")
+
+        std = np.where(estimated_foregrounds, std_with_to_estimate, np.sqrt(rho * (frame - mean) ** 2 + (1 - rho) * std_with_to_estimate ** 2))
+        save_img(img=std, rho=rho, idx=idx, directorio="images/pruebas_std")
         
         # updating the evolution of the mean and the std
         evol_means.append(mean)
         evol_std.append(std)
-    
-    return evol_means, evol_std
+
+        if len(evol_means) > 10:
+            evol_means = evol_means[-10:]
+            evol_std = evol_std[-10:]
 
 
+        ## Computing metrrics
+        ap, pred_mask_list = connected_components(idx, inc=N_25, gray_frame=estimated_foregrounds, color_frame=color_frame, gt=gt, rgb_frame=rgb_frame)
+        print("AP:", ap)
+        evol_ap.append(ap)
+        
+        pbar.set_description(f"[alpha = {alpha}] Current AP {round(sum(evol_ap) / len(evol_ap), 2)}")
 
-def compute_masks(frames:np.ndarray, mean: Optional[List[np.ndarray]], std: Optional[List[np.ndarray]]):
-    assert type(mean) == type(std), "Missmatch in types"
-    
-    if isinstance(mean, list):
-        pass
-    else:
-        pass
+    print("Final AP:" )
+    return evol_ap
+
 
 
 
 
 
 if __name__ == "__main__":
+    import pickle  
     
     video_path = './AICity_data/train/S03/c010/vdo.avi'
     annotations_path = './ai_challenge_s03_c010-full_annotation.xml'
 
-    evol_means, evol_std, frames, estimated_foregrounds = Adaptive_Gaussian_Estimation(video_path, annotations_path)
+    evol_ap = Adaptive_Gaussian_Estimation(video_path, annotations_path)
     
-        
-    # Verificar si el directorio "pruebas" existe, si no, crearlo
-    if not os.path.exists('./images/pruebas'):
-        os.makedirs('./images/pruebas')
-
-    # Guardar cada imagen en el directorio "pruebas"
-    for i, img in enumerate(evol_means):
-        filename = f'prueba_mean{i}.png'  # Nombre del archivo de imagen
-        #cv2.imwrite(os.path.join('./images/pruebas', filename), img.astype("uint8"))
+    # Guardar la lista en el archivo usando pickle
+    with open('images/results/first_try.pkl', 'wb') as archivo :
+        pickle.dump(evol_ap, archivo)
 
 
-    # Guardar cada imagen en el directorio "pruebas"
-    for i, img in enumerate(evol_std):
-        filename = f'prueba_std{i}.png'  # Nombre del archivo de imagen
-        #cv2.imwrite(os.path.join('./images/pruebas', filename), img.astype("uint8"))
-        
-        
-        # Guardar cada imagen en el directorio "pruebas"
-    #for i, img in enumerate(estimated_foregrounds):
-    filename = f'prueba_frames{i}.png'  # Nombre del archivo de imagen
-    cv2.imwrite(os.path.join('./images/pruebas', filename), (estimated_foregrounds*255).astype("uint8"))
-    print("Imágenes guardadas en el directorio 'pruebas'.")
+    

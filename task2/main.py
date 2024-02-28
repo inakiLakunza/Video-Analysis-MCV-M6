@@ -238,11 +238,11 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
 
         weights = (calcular_pesos_exponenciales(len(evol_means))) if len(evol_means) <10 else calcular_pesos_exponenciales(10)
 
-        mean_with_to_estimate =compute_weighted_avg(evol_means, weights) #np.mean(np.array(evol_means) * weights.reshape((len(weights), 1, 1)))
-        std_with_to_estimate = compute_weighted_avg(evol_std, weights) #evol_std[-1]#np.mean(np.array(evol_std) * weights.reshape((len(weights), 1, 1)))
+        mean_with_to_estimate = compute_gaussian_weighted_avg(evol_means, weights) #np.mean(np.array(evol_means) * weights.reshape((len(weights), 1, 1)))
+        std_with_to_estimate = compute_gaussian_weighted_avg(evol_std, weights) #evol_std[-1]#np.mean(np.array(evol_std) * weights.reshape((len(weights), 1, 1)))
 
         estimated_foregrounds = estimate_foreground(frames=frame, mean_=mean_with_to_estimate, std_=std_with_to_estimate, alpha_=alpha)
-        save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = f'images/pruebas_foreground_{str(rho)}_{str(alpha)}')
+        save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = f'images/pruebas_foreground_gaussin_{str(rho)}_{str(alpha)}')
 
         # Compute the mean  and std by the variations of the window
         mean = np.where(estimated_foregrounds, mean_with_to_estimate, (rho * frame) + (1-rho) * mean_with_to_estimate)   
@@ -262,14 +262,14 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
 
         ## Computing metrrics
         ap, rgb_frame = connected_components(idx, inc=N_25, gray_frame=estimated_foregrounds, color_frame=color_frame, gt=gt, rgb_frame=rgb_frame)
-        save_img(img=rgb_frame, rho=rho, idx=idx, directorio=f"images/results_{str(rho)}_{str(alpha)}")
+        save_img(img=rgb_frame, rho=rho, idx=idx, directorio=f"images/results_gausian_{str(rho)}_{str(alpha)}")
 
 
         evol_ap.append(ap)        
         pbar.set_description(f"[alpha = {alpha}] Current AP {round(sum(evol_ap) / len(evol_ap), 2)}")
 
         # Guardar la lista en el archivo usando pickle
-    with open(f'images/results/results_{str(rho)}_{str(alpha)}_ap.pkl', 'wb') as archivo :
+    with open(f'images/results/results_gaussian_{str(rho)}_{str(alpha)}_ap.pkl', 'wb') as archivo :
         pickle.dump(evol_ap, archivo)
     
     return evol_ap
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     annotations_path = './ai_challenge_s03_c010-full_annotation.xml'
         
     #for idx in [i / 10 for i in range(11)]:
-    rho = 0.3
+    rho = 0.2
     print("Starting the fitting for rho: ", rho)
 
     vid = cv2.VideoCapture(video_path)
@@ -306,7 +306,7 @@ if __name__ == "__main__":
     # Background modeling
     mean_, std_ = fit_(video=vid, N_iterations=N_25, size=SIZE)
 
-    evol_ap = Adaptive_Gaussian_Estimation(vid, annotations_path, mean_, std_,  rho=rho, alpha=4 )
+    evol_ap = Adaptive_Gaussian_Estimation(vid, annotations_path, mean_, std_,  rho=rho, alpha=3.5)
 
 
 

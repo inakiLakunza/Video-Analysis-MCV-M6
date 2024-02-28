@@ -8,6 +8,20 @@ import cv2
 import numpy as np
 import os
 
+from PIL import Image
+
+
+def create_gif(image_paths, output_gif_path, duration=500):
+    images = [Image.open(image_path) for image_path in image_paths[:50]]
+    # Save as GIF
+    images[0].save(
+    output_gif_path,
+    save_all=True,
+    append_images=images[1:],
+    duration=duration,
+    loop=1 # 0 means infinite loop
+ )
+
 
 def read_video(vid_path: str, color_space: str, max_iterations: int = 1000):
     vid = cv2.VideoCapture(vid_path)
@@ -103,6 +117,8 @@ def compute_weighted_avg(matrix:np.ndarray, weights:np.ndarray):
     media_ponderada = suma_ponderada / suma_pesos
     
     return media_ponderada
+
+    
 
 
 def compute_gaussian_weighted_avg(matrix: np.ndarray, sigma: float = 1.2):
@@ -271,5 +287,16 @@ if __name__ == "__main__":
     import os
     import pickle
     import matplotlib.pyplot as plt
+    import glob
+    
 
-    make_video_from_images("images/pruebas_foreground_0.3_3.5")
+    image_list = []
+    for filename in glob.glob('images/pruebas_foreground_0.3_3.5/*.png'): 
+        image_list.append(filename)
+
+    # Output GIF path
+    output_gif_path = "images/pruebas_foreground_0.3_3.5/foreground_very_long.gif"
+    # Create GIF
+    create_gif(image_list, output_gif_path)
+
+    print(f"GIF created and saved at {output_gif_path}")

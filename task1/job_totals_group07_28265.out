@@ -1,0 +1,72 @@
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 1.75] Average Preicison = 0.2745266573550375
+[alpha = 1.75] Average Recall = 0.14500735876825582
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 2] Average Preicison = 0.33695456490549847
+[alpha = 2] Average Recall = 0.2219857353107624
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 2.25] Average Preicison = 0.35790978058904704
+[alpha = 2.25] Average Recall = 0.26741386467413525
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 2.5] Average Preicison = 0.3384340193119234
+[alpha = 2.5] Average Recall = 0.2771878184082389
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 2.75] Average Preicison = 0.3460112671727811
+[alpha = 2.75] Average Recall = 0.2989924148081032
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 3] Average Preicison = 0.3280764245975316
+[alpha = 3] Average Recall = 0.28982037058001975
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 3.25] Average Preicison = 0.31582218331613604
+[alpha = 3.25] Average Recall = 0.280384165440204
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 3.5] Average Preicison = 0.3038241927771518
+[alpha = 3.5] Average Recall = 0.26912996716857107
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 3.75] Average Preicison = 0.2950374735234919
+[alpha = 3.75] Average Recall = 0.25877580286048374
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 4] Average Preicison = 0.27992061204213775
+[alpha = 4] Average Recall = 0.2472168761085308
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 6] Average Preicison = 0.21324999573606138
+[alpha = 6] Average Recall = 0.1752613306162482
+Video done.
+gray_frames.shape: (2141, 1080, 1920) 	 color_frames.shape: (2141, 1080, 1920, 3)
+mean video: (1080, 1920) 	 std video: (1080, 1920)
+estimation video: (1606, 1080, 1920)
+[alpha = 10] Average Preicison = 0.07668247588857798
+[alpha = 10] Average Recall = 0.08683912600475502
+Video done.

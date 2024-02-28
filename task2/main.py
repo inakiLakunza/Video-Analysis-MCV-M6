@@ -104,7 +104,8 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
         area = values[i, cv2.CC_STAT_AREA] 
         pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
 
-
+        if 1.2*values[i, cv2.CC_STAT_HEIGHT]> values[i, cv2.CC_STAT_WIDTH]:
+            continue
         if (area > 1_000) and (area < 250_000): 
             componentMask = (label_ids == i).astype("uint8") * 255
             output = cv2.bitwise_or(output, componentMask)
@@ -242,7 +243,7 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
         std_with_to_estimate = compute_gaussian_weighted_avg(evol_std, weights) #evol_std[-1]#np.mean(np.array(evol_std) * weights.reshape((len(weights), 1, 1)))
 
         estimated_foregrounds = estimate_foreground(frames=frame, mean_=mean_with_to_estimate, std_=std_with_to_estimate, alpha_=alpha)
-        save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = f'images/pruebas_foreground_gaussin_{str(rho)}_{str(alpha)}')
+        save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = f'images/pruebas_foreground_new_{str(rho)}_{str(alpha)}')
 
         # Compute the mean  and std by the variations of the window
         mean = np.where(estimated_foregrounds, mean_with_to_estimate, (rho * frame) + (1-rho) * mean_with_to_estimate)   
@@ -262,7 +263,7 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
 
         ## Computing metrrics
         ap, rgb_frame = connected_components(idx, inc=N_25, gray_frame=estimated_foregrounds, color_frame=color_frame, gt=gt, rgb_frame=rgb_frame)
-        save_img(img=rgb_frame, rho=rho, idx=idx, directorio=f"images/results_gausian_{str(rho)}_{str(alpha)}")
+        save_img(img=rgb_frame, rho=rho, idx=idx, directorio=f"images/results_new_{str(rho)}_{str(alpha)}")
 
 
         evol_ap.append(ap)        

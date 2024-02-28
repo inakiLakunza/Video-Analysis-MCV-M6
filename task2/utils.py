@@ -178,32 +178,23 @@ def split_frames(frames):
     return frames[:int(frames.shape[0] * 0.25)], frames[int(frames.shape[0] * 0.25):]
 
 
-def make_video_from_images(image_path):
+def make_video(estimation):
     """
-    Make a .mp4 from images with background subtraction
+    Make a .mp4 from the estimation
+    https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
 
-    Parameters:
-        image_path (str): Path where the images with background subtraction are stored
+    Parameters
+        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=uint8)
     """
-    images = sorted(os.listdir(image_path))
-    if not images:
-        print("No images found in the specified path.")
-        return
-    
-    image_files = [os.path.join(image_path, img) for img in images]
-    # Load the first image to get size information
-    first_image = cv2.imread(image_files[0])
-    size = (first_image.shape[1], first_image.shape[0])
-    
+    size = estimation.shape[1], estimation.shape[2]
+    duration = estimation.shape[0]
     fps = 10
-    out = cv2.VideoWriter(f'./estimation_alpha3_5_roch_0.3.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 1,size)
-
-    for image_file in image_files:
-        image = cv2.imread(image_file)
-        # Convert the image to grayscale
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        out.write(gray_image)
-
+    out = cv2.VideoWriter(f'./last_frames_estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), True)
+    for i in range(duration):
+        data = (estimation[i]).astype(np.uint8)
+        # I am converting the data to gray but we should look into this...
+        data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
+        out.write(data)
     out.release()
 
 def compute_metric(mask1_list, mask2_list, threshold=0.5):
@@ -291,12 +282,17 @@ if __name__ == "__main__":
     
 
     image_list = []
-    for filename in glob.glob('images/pruebas_foreground_0.3_3.5/*.png'): 
-        image_list.append(filename)
+    filenames = []
+
+    for filename in glob.glob('images/pruebas_foreground_0.2_3.5/*.png'): 
+        path = (os.path.join(filename))
+        filenames.append(path)
+    
+    filenames = (sorted(filenames, key=lambda x: int(x.split("/")[-1].split(".")[-2].split("_")[-1]))[:60])
+    for path in filenames:
+        image_list.append(cv2.imread(path))
 
     # Output GIF path
-    output_gif_path = "images/pruebas_foreground_0.3_3.5/foreground_very_long.gif"
     # Create GIF
-    create_gif(image_list, output_gif_path)
+    make_video(np.array(image_list))
 
-    print(f"GIF created and saved at {output_gif_path}")

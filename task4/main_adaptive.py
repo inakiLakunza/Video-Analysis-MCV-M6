@@ -115,9 +115,9 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
     gray_frame = (gray_frame * 255).astype(np.uint8)
     gray_frame = cv2.medianBlur(gray_frame, 3)
     # Closing
-    kernel = np.ones((3,3),np.uint8)
+    kernel = np.ones((11,11),np.uint8)
+    #gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
     gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_CLOSE, kernel)
-    gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
 
     # Connected components
     analysis = cv2.connectedComponentsWithStats(gray_frame, 4, cv2.CV_32S) 
@@ -133,7 +133,7 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
         pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
 
 
-        if (area > 1_000) and (area < 250_000): 
+        if (area > 3_000) and (area < 850_000) and (values[i, cv2.CC_STAT_WIDTH] >  values[i, cv2.CC_STAT_HEIGHT]): 
             componentMask = (label_ids == i).astype("uint8") * 255
             output = cv2.bitwise_or(output, componentMask)
 
@@ -182,36 +182,6 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt, rgb_frame)
 
     return AP, rgb_frame
 
-
-
-    
-
-def Gaussian_Estimation(video_path: str, annotations_path: str):
-    gray_frames, color_frames = utils.read_video(video_path)
-    print(f"gray_frames.shape: {gray_frames.shape} \t color_frames.shape: {color_frames.shape}")
-
-    gt = utils.read_annotations(annotations_path)
-
-    # Split 25-75 frames
-    gray_frames_25, gray_frames_75 = utils.split_frames(gray_frames)
-    color_frames_25, color_frames_75 = utils.split_frames(color_frames)
-
-    # Background modeling
-    mean_, std_ = mean_and_std(gray_frames_25)
-    print(f"mean video: {mean_.shape} \t std video: {std_.shape}")
-
-    estimation = estimate_foreground(gray_frames_75, mean_, std_)
-    print(f"estimation video: {estimation.shape}")
-
-    # Separate objects
-    for frame_idx in range(5):
-        connected_components(frame_idx, color_frames_25.shape[0], estimation[frame_idx], color_frames_75[frame_idx], gt)
-
-    
-    return mean_, std_
-    #utils.make_video(color_frames_75)
-    #print(f"Video done.")
-  
 
 def fit_(video, N_iterations:int,  size:tuple, color_space):
 
@@ -266,6 +236,7 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
     init_frame_id = int(vid.get(cv2.CAP_PROP_POS_FRAMES))
     
     # frames = 2141
+    #res_frames = []
     for idx in (pbar:= tqdm.tqdm(range(N_75), desc="Estimating Foreground")):
         _, color_frame = vid.read()
         frame = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)
@@ -285,7 +256,7 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
         std_with_to_estimate = utils.compute_weighted_avg(evol_std, weights) #evol_std[-1]#np.mean(np.array(evol_std) * weights.reshape((len(weights), 1, 1)))
         print(frame_rgb.shape)
         estimated_foregrounds = estimate_foreground(frames=frame_rgb, mean_=mean_with_to_estimate, std_=std_with_to_estimate, alpha_=alpha, color_space = color_space)
-        #save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = f'images/pruebas_foreground_{str(rho)}_{str(alpha)}')
+        utils.save_img(img=estimated_foregrounds*255, rho=rho, idx=idx, directorio = f'images/pruebas_foreground_{str(rho)}_{str(alpha)}')
 
        
         # Compute the mean  and std by the variations of the window
@@ -310,8 +281,8 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
 
         ## Computing metrrics
         ap, rgb_frame = connected_components(idx, inc=N_25, gray_frame=estimated_foregrounds, color_frame=color_frame, gt=gt, rgb_frame=rgb_frame)
-        #save_img(img=rgb_frame, rho=rho, idx=idx, directorio=f"images/results_{str(rho)}_{str(alpha)}")
-
+        utils.save_img(img=rgb_frame, rho=rho, idx=idx, directorio=f"images/results_{str(rho)}_{str(alpha)}")
+        #res_frames.append(rgb_frame)
 
         evol_ap.append(ap)        
         pbar.set_description(f"[alpha = {alpha}] Current AP {round(sum(evol_ap) / len(evol_ap), 2)}")
@@ -319,6 +290,7 @@ def Adaptive_Gaussian_Estimation(vid, annotations_path:str, mean:np.ndarray, std
         # Guardar la lista en el archivo usando pickle
     #with open(f'images/results/results_{str(rho)}_{str(alpha)}_ap.pkl', 'wb') as archivo :
         #pickle.dump(evol_ap, archivo)
+    #utils.make_video(res_frames, './video_test.mp4')
     
     return evol_ap
 
@@ -336,7 +308,7 @@ if __name__ == "__main__":
 
         
     #for idx in [i / 10 for i in range(11)]:
-    rho = 0.3
+    rho = 0.1
     print("Starting the fitting for rho: ", rho)
 
     vid = cv2.VideoCapture(video_path)
@@ -353,7 +325,7 @@ if __name__ == "__main__":
     gt = utils.read_annotations(annotations_path)
 
     color = 'HSV'
-    alpha = 6
+    alpha = 4
     # Background modeling
     mean_, std_ = fit_(video=vid, N_iterations=N_25, size=SIZE,color_space = color)
 

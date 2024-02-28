@@ -69,22 +69,22 @@ def split_frames(frames):
     return frames[:int(frames.shape[0] * 0.25), :, :], frames[int(frames.shape[0] * 0.25):, :, :]
 
 
-def make_video(estimation):
+def make_video(estimation, video_name):
     """
     Make a .mp4 from the estimation
     https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
 
     Parameters
-        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=bool)
+        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=uint8)
     """
     size = estimation.shape[1], estimation.shape[2]
     duration = estimation.shape[0]
     fps = 10
-    out = cv2.VideoWriter(f'./estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), False)
+    out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), True)
     for i in range(duration):
         data = (estimation[i] * 255).astype(np.uint8)
         # I am converting the data to gray but we should look into this...
-        data = cv2.cvtColor(data, cv2.COLOR_RGB2GRAY)
+        data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
         out.write(data)
     out.release()
 
@@ -154,25 +154,6 @@ def estimate_foreground(frames, mean_, std_, alpha_ = 2):
     return estimation.astype(bool)
 
 
-def make_video(estimation):
-    """
-    Make a .mp4 from the estimation
-    https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
-
-    Parameters
-        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=bool)
-    """
-    size = estimation.shape[1], estimation.shape[2]
-    duration = estimation.shape[0]
-    fps = 10
-    out = cv2.VideoWriter(f'./estimation_{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), False)
-    for i in range(duration):
-        data = (estimation[i] * 255).astype(np.uint8)
-        # I am converting the data to gray but we should look into this...
-        data = cv2.cvtColor(data, cv2.COLOR_RGB2GRAY)
-        out.write(data)
-    out.release()
-
 def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
     """
     Separate into objects.
@@ -202,6 +183,10 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
     # kernel = np.ones((3,3),np.uint8)
     # gray_frame = cv2.morphologyEx(gray_frame, cv2.MORPH_OPEN, kernel)
 
+    # Median
+    gray_frame = cv2.medianBlur(gray_frame, 3)
+
+
     # Connected components
     analysis = cv2.connectedComponentsWithStats(gray_frame, 4, cv2.CV_32S) 
     (totalLabels, label_ids, values, centroid) = analysis 
@@ -215,7 +200,7 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
         area = values[i, cv2.CC_STAT_AREA] 
         pred_mask = np.zeros(gray_frame.shape, dtype="uint8") # prediction
 
-        if (area > 5_000) and (area < 250_000): 
+        if (area > 1_000) and (area < 250_000): 
             componentMask = (label_ids == i).astype("uint8") * 255
             output = cv2.bitwise_or(output, componentMask)
 
@@ -261,7 +246,7 @@ def connected_components(frame_idx, inc, gray_frame, color_frame, gt):
 
     #plt.imsave(f'./pruebas_1_1/after_{frame_idx + inc}.jpg', color_frame)
 
-    return precision, recall
+    return precision, recall, color_frame
 
 
 # Thanks Team 5 and FAIR!

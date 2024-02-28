@@ -17,6 +17,7 @@ import os
 import argparse
 import glob
 import utils
+import time
 
 
 # NUMBER OF FRAMES IN THE FIRST 25%
@@ -72,9 +73,11 @@ def state_of_the_art(vid_path, ind):
         
     if ind in range(7):
         # Train  the substractor with the first 25% frames
-        for frame in gray_frames_25: subs.apply(frame)
-
-        estimation = estimate_sota_foreground(subs, gray_frames_75, ind)
+        #for frame in gray_frames_25: subs.apply(frame)
+        start_time = time.time()
+        estimation = estimate_sota_foreground(subs, gray_frames, ind)
+        end_time = time.time()
+        model_times[MODEL_NAMES[ind]] = end_time-start_time
 
     # Separate objects and compute metrics
     precision_list = []
@@ -82,7 +85,7 @@ def state_of_the_art(vid_path, ind):
     res_frames = []
     for frame_idx in (pbar := tqdm(range(estimation.shape[0]))):
         print(f"Computing precision and recall with frame {frame_idx}")
-        precision, recall, res_frame = connected_components(frame_idx, color_frames_25.shape[0], estimation[frame_idx], color_frames_75[frame_idx], gt)
+        precision, recall, res_frame = connected_components(frame_idx, 0, estimation[frame_idx], color_frames[frame_idx], gt)
         res_frames.append(res_frame)
         precision_list.append(precision)
         recall_list.append(recall)
@@ -96,15 +99,15 @@ def state_of_the_art(vid_path, ind):
     print(f"[Model name: {MODEL_NAMES[ind]}] Average Recall = {AR}")
 
     # Save as pkl so that we can later make plots
-    log_AP_name = './model_logs/AP_model_'+str(MODEL_NAMES[ind])+'.pkl'
+    log_AP_name = './model_logs_full_learn/AP_model_'+str(MODEL_NAMES[ind])+'.pkl'
     with open(log_AP_name, 'wb') as file:
         pickle.dump({'precision_list': precision_list}, file)
     
-    log_AR_name = './model_logs/AR_model_'+str(MODEL_NAMES[ind])+'.pkl'
+    log_AR_name = './model_logs_full_learn/AR_model_'+str(MODEL_NAMES[ind])+'.pkl'
     with open(log_AR_name, 'wb') as file:
         pickle.dump({'recall_list': recall_list}, file)
 
-    #utils.make_video(np.array(res_frames), f"./final_video_{str(MODEL_NAMES[ind])}.mp4")
+    utils.make_video(np.array(res_frames), f"./final_video_{str(MODEL_NAMES[ind])}.mp4")
 
 
     
@@ -115,7 +118,7 @@ def estimate_sota_foreground(subs, frames, model_index):
     estimation = []
     for frame in frames:
         # Apply model, and do not learn from it
-        single_est = subs.apply(frame, learningRate=0.0)
+        single_est = subs.apply(frame)
 
         # there are some models which return more than binary
         if len(single_est.shape)==3:
@@ -206,20 +209,26 @@ if __name__ == "__main__":
      \n 7: rembg (special)
      """
 
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-i', '--index', type=int, help=description, default=0)
+    substractor1 = cv2.bgsegm.createBackgroundSubtractorMOG()   
+    substractor2 = cv2.createBackgroundSubtractorMOG2()
+    substractor3 = cv2.bgsegm.createBackgroundSubtractorGMG()
+    substractor4 = cv2.createBackgroundSubtractorKNN() 
+    substractor5 = cv2.bgsegm.createBackgroundSubtractorLSBP()
+    substractor6 = cv2.bgsegm.createBackgroundSubtractorCNT()
 
-
-    args = parser.parse_args()
-
-    s_index = args.index
-    if s_index==7:
-        # REMBG OUTPUTS SAVED ALREADY
-        #model_name = "unet"
-        #rembg_session = rembg.new_session(model_name)
-        rembg_outs = '/ghome/group07/test/task3/rembg_outputs'
+    substractors = [substractor1, substractor2, substractor3,
+                    substractor4, substractor5, substractor6]
 
     vid_path = '/ghome/group07/test/AICity_data/train/S03/c010/vdo.avi'
     annotations_path = '/ghome/group07/test/ai_challenge_s03_c010-full_annotation.xml'
     rembg_output_path = "/ghome/group07/test/task3/rembg_outputs/"
-    state_of_the_art(vid_path, s_index, annotations_path)
+    
+    model_times = {}
+    for sub_i in range(len(substractors)):
+        state_of_the_art(vid_path, sub_i)
+
+    # Save as pkl so that we can later make plots
+    log_time_name = './model_logs_full_learn/times.pkl'
+    with open(log_time_name, 'wb') as file:
+        pickle.dump(model_times)
+    

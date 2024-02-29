@@ -10,6 +10,6 @@ mv <data_path>/AICity_data .
 python3 main.py
 ```
 
-## Results
+
 
 

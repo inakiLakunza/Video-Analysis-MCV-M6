@@ -10,6 +10,6 @@ mv <data_path>/AICity_data .
 python3 main.py
 ```
 
-
-
+# (Some) Results
+![gif](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/task1/gifs/init_alpha_2.gif)
 

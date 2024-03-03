@@ -37,3 +37,25 @@ def save_img(img, output, save_path, cfg):
     out = v.draw_instance_predictions(output["instances"].to("cpu"))
     # [:, :, ::-1] converts from RBG to BGR and vice versa
     cv2.imwrite(save_path, out.get_image()[:, :, ::-1])
+
+
+def make_video(out_folder):
+    """
+    Make a .mp4 from the estimation
+    https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
+
+    Parameters
+        estimation : np.ndarray([1606, 1080, 1920, 3], dtype=uint8)
+    """
+    
+    duration = 2141
+    img_shape = 1920, 1080 
+    fps = 10
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+    video=cv2.VideoWriter('example_video.avi', fourcc, fps, (img_shape[0], img_shape[1]), True)
+
+    
+    for j in range(0,duration//5):
+        img = cv2.imread(os.path.join(out_folder, "frame_"+str(j)+".png"))
+        video.write(img)

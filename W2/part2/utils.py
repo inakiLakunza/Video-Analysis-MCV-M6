@@ -59,3 +59,6 @@ def make_video(out_folder):
     for j in range(0,duration//5):
         img = cv2.imread(os.path.join(out_folder, "frame_"+str(j)+".png"))
         video.write(img)
+
+
+    

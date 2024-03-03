@@ -5,10 +5,10 @@ os.environ["KERAS_BACKEND"] = "torch"  # Or "jax" or "torch"!
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from utils import *
-from track_classes import Track, Detection, Tracks_2_1
+from track_classes_and_functions import Detection, Tracks_2_1, nms
 
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import glob
 import pickle
 import matplotlib.pyplot as plt
@@ -99,53 +99,54 @@ if __name__ == "__main__":
     #----------------------------------------------------------------------
 
     track_updater = Tracks_2_1(min_iou, max_frames_skip)
-    with tqdm.tqdm(total=N_FRAMES) as pbar:
-        for i in range(N_FRAMES):
+    for i in tqdm(range(N_FRAMES)):
 
-            img_path = os.path.join(COLOR_FRAME_SET_PATH, str(i)+".png")
-            img = cv2.imread(img_path)
-            preds = predictor(img)
+        img_path = os.path.join(COLOR_FRAME_SET_PATH, str(i)+".png")
+        img = cv2.imread(img_path)
+        preds = predictor(img)
 
-            # Keep only car predictions
-            keep_cars_mask = preds["instances"].pred_classes == NAME_TO_CLASS["car"]
-            bboxes, scores = preds["instances"].pred_boxes[keep_cars_mask], preds["instances"].scores[keep_cars_mask]
-            n_wanted_classes = sum(keep_cars_mask)
+        # Keep only car predictions
+        keep_cars_mask = preds["instances"].pred_classes == NAME_TO_CLASS["car"]
+        bboxes, scores = preds["instances"].pred_boxes[keep_cars_mask], preds["instances"].scores[keep_cars_mask]
+        n_wanted_classes = sum(keep_cars_mask)
 
-            # MAYBE WE SHOULD REMOVE SOME BB USING A THRESHOLD,
-            # BUT I THINK THAT THIS IS DONE IN LINE 82 ALREADY USING THAT THRESHOLD
-            # OTHERWISE WE SHOULD JUST APPLY A THRESHOLD
+        # MAYBE WE SHOULD REMOVE SOME BB USING A THRESHOLD,
+        # BUT I THINK THAT THIS IS DONE IN LINE 82 ALREADY USING THAT THRESHOLD
+        # OTHERWISE WE SHOULD JUST APPLY A THRESHOLD
 
-            new_detections = []
-            for i_det in range(n_wanted_classes):
-                det = Detection(i_det, bboxes[i_det])
-                new_detections.append(det)
+        frame_detections = []
+        for i_det in range(n_wanted_classes):
+            det = Detection(i_det, bboxes[i_det], scores[i_det])
+            frame_detections.append(det)
 
-            track_updater.update_tracks(new_detections, i)
-            frame_tracks = track_updater.get_tracks()
-            print(f"Frame {i} has a total number of {len(frame_tracks)} shown")
+        #detections_after_nms = nms(frame_detections, detection_threshold, min_iou)
 
-            for frame_track in frame_tracks:
-                if frame_track.get_last_frame_id() == i:
-                    detection = frame_track.get_last_detection()
-                    bb_color = frame_track.get_color()
-                    bb = detection.get_bb()
+        track_updater.update_tracks(frame_detections, i)
+        frame_tracks = track_updater.get_tracks()
+        print(f"Frame {i} has a total number of {len(frame_tracks)} shown\n\n")
 
-                    #
-                    #print("bb: ",bb)
-                    #print()
-                    #print("bboxes", bboxes)
-                    # CHECK THAT THE RETURNED BOX IS FOUND IN bboxes
-                    #debug_msg = """There is something wrong, the returned bounding
-                    #box was not found in the bboxes list"""
-                    #assert bb in bboxes, debug_msg
+        for frame_track in frame_tracks:
+            if frame_track.get_last_frame_id() == i:
+                detection = frame_track.get_last_detection()
+                bb_color = frame_track.get_color()
+                bb = detection.get_bb()
 
-                    x_min, y_min, x_max, y_max = bb
-                    mins = int(x_min), int(y_min)
-                    maxs = int(x_max), int(y_max)
-                    img = cv2.rectangle(img, mins, maxs, bb_color, bb_thickness)
-                    
-            out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
-            cv2.imwrite(out_path, img)
+                #
+                #print("bb: ",bb)
+                #print()
+                #print("bboxes", bboxes)
+                # CHECK THAT THE RETURNED BOX IS FOUND IN bboxes
+                #debug_msg = """There is something wrong, the returned bounding
+                #box was not found in the bboxes list"""
+                #assert bb in bboxes, debug_msg
+
+                x_min, y_min, x_max, y_max = bb
+                mins = int(x_min), int(y_min)
+                maxs = int(x_max), int(y_max)
+                img = cv2.rectangle(img, mins, maxs, bb_color, bb_thickness)
+                
+        out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
+        cv2.imwrite(out_path, img)
 
 
 

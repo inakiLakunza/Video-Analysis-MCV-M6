@@ -33,6 +33,9 @@ class Track():
     def get_color(self):
         return (int(self.color[0]), int(self.color[1]), int(self.color[2]))
 
+    def get_track_id(self):
+        return self.id
+
     
 
 class Detection():
@@ -187,7 +190,7 @@ class Tracks_2_1():
 
                         
 # NON-MAXIMUM SUPRESSION
-# (No MameS) XD 
+# (No MameS) XD  XDDDDDD
 # TAKEN FROM (https://medium.com/analytics-vidhya/non-max-suppression-nms-6623e6572536)
 def nms(detections, conf_threshold, iou_threshold):
     detection_list_thresholded = []

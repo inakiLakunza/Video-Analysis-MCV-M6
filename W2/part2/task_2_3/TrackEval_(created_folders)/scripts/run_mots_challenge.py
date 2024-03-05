@@ -39,7 +39,6 @@ Command Line Arguments: Defaults, # Comments
 
 import sys
 import os
-sys.path.append('./TrackEval')
 import argparse
 from multiprocessing import freeze_support
 
@@ -87,13 +86,11 @@ if __name__ == '__main__':
     # Run code
     evaluator = trackeval.Evaluator(eval_config)
     dataset_list = [trackeval.datasets.MOTSChallenge(dataset_config)]
-    metrics_list = ['HOTA','CLEAR', 'Identity', 'VACE', 'JAndF']
-    metrics_list = [trackeval.metrics.HOTA(), trackeval.metrics.CLEAR(), trackeval.metrics.Identity(), trackeval.metrics.VACE(),
-                   trackeval.metrics.JAndF()]
-    #for metric in [trackeval.metrics.HOTA, trackeval.metrics.CLEAR, trackeval.metrics.Identity, trackeval.metrics.VACE,
-    #               trackeval.metrics.JAndF]:
-    #    if metric.get_name() in metrics_config['METRICS']:
-    #        metrics_list.append(metric())
+    metrics_list = []
+    for metric in [trackeval.metrics.HOTA, trackeval.metrics.CLEAR, trackeval.metrics.Identity, trackeval.metrics.VACE,
+                   trackeval.metrics.JAndF]:
+        if metric.get_name() in metrics_config['METRICS']:
+            metrics_list.append(metric())
     if len(metrics_list) == 0:
         raise Exception('No metrics selected for evaluation')
     evaluator.evaluate(dataset_list, metrics_list)

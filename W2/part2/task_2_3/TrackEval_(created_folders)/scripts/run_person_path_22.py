@@ -1,7 +1,29 @@
-""" run_mots.py
+
+""" run_person_path_22.py
 
 Run example:
-run_mots.py --USE_PARALLEL False --METRICS Hota --TRACKERS_TO_EVAL TrackRCNN
+python3 run_person_path_22.py \
+    --BENCHMARK person_path_22 \
+    --SPLIT_TO_EVAL test \
+    --TRACKERS_TO_EVAL custom_tracker \
+    --METRICS HOTA CLEAR Identity VACE \
+    --USE_PARALLEL True \
+    --NUM_PARALLEL_CORES 12 \
+    --TRACKERS_FOLDER $TRACKER_FOLDER
+
+where $TRACKER_FOLDER is the path of the folder containing the tracker predictions in MOTChallenge format.
+In particular, $TRACKER_FOLDER is expected to have the following structure:
+$TRACKER_FOLDER/
+    person_path_22-test/
+        custom_tracker/
+            data/
+                uid_vid_00008.mp4.txt
+                uid_vid_00009.mp4.txt
+                [...]
+                uid_vid_00235.mp4.txt
+
+Each text file contains the tracker predictions in MOTChallenge format for a given video.
+
 
 Command Line Arguments: Defaults, # Comments
     Eval arguments:
@@ -16,30 +38,24 @@ Command Line Arguments: Defaults, # Comments
         'OUTPUT_DETAILED': True,
         'PLOT_CURVES': True,
     Dataset arguments:
-        'GT_FOLDER': os.path.join(code_path, 'data/gt/mot_challenge/'),  # Location of GT data
-        'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/mot_challenge/'),  # Trackers location
+        'GT_FOLDER': os.path.join(code_path, 'data/gt/person_path_22/'),  # Location of GT data
+        'TRACKERS_FOLDER': os.path.join(code_path, 'data/trackers/person_path_22/'),  # Trackers location
         'OUTPUT_FOLDER': None,  # Where to save eval results (if None, same as TRACKERS_FOLDER)
         'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
         'CLASSES_TO_EVAL': ['pedestrian'],  # Valid: ['pedestrian']
-        'SPLIT_TO_EVAL': 'train',  # Valid: 'train', 'test'
+        'BENCHMARK': 'person_path_22',  # Valid: 'person_path_22'
+        'SPLIT_TO_EVAL': 'train',  # Valid: 'train', 'test', 'all'
         'INPUT_AS_ZIP': False,  # Whether tracker input files are zipped
         'PRINT_CONFIG': True,  # Whether to print current config
+        'DO_PREPROC': True,  # Whether to perform preprocessing
         'TRACKER_SUB_FOLDER': 'data',  # Tracker files are in TRACKER_FOLDER/tracker_name/TRACKER_SUB_FOLDER
         'OUTPUT_SUB_FOLDER': '',  # Output files are saved in OUTPUT_FOLDER/tracker_name/OUTPUT_SUB_FOLDER
-        'SEQMAP_FOLDER': None,  # Where seqmaps are found (if None, GT_FOLDER/seqmaps)
-        'SEQMAP_FILE': None,  # Directly specify seqmap file (if none use seqmap_folder/MOTS-split_to_eval)
-        'SEQ_INFO': None,  # If not None, directly specify sequences to eval and their number of timesteps
-        'GT_LOC_FORMAT': '{gt_folder}/{seq}/gt/gt.txt',  # '{gt_folder}/{seq}/gt/gt.txt'
-        'SKIP_SPLIT_FOL': False,    # If False, data is in GT_FOLDER/MOTS-SPLIT_TO_EVAL/ and in
-                                    # TRACKERS_FOLDER/MOTS-SPLIT_TO_EVAL/tracker/
-                                    # If True, then the middle 'MOTS-split' folder is skipped for both.
     Metric arguments:
-        'METRICS': ['HOTA','CLEAR', 'Identity', 'VACE', 'JAndF']
+        'METRICS': ['HOTA', 'CLEAR', 'Identity', 'VACE']
 """
 
 import sys
 import os
-sys.path.append('./TrackEval')
 import argparse
 from multiprocessing import freeze_support
 
@@ -52,8 +68,8 @@ if __name__ == '__main__':
     # Command line interface:
     default_eval_config = trackeval.Evaluator.get_default_eval_config()
     default_eval_config['DISPLAY_LESS_PROGRESS'] = False
-    default_dataset_config = trackeval.datasets.MOTSChallenge.get_default_dataset_config()
-    default_metrics_config = {'METRICS': ['HOTA', 'CLEAR', 'Identity']}
+    default_dataset_config = trackeval.datasets.PersonPath22.get_default_dataset_config()
+    default_metrics_config = {'METRICS': ['HOTA', 'CLEAR', 'Identity'], 'THRESHOLD': 0.5}
     config = {**default_eval_config, **default_dataset_config, **default_metrics_config}  # Merge default configs
     parser = argparse.ArgumentParser()
     for setting in config.keys():
@@ -86,14 +102,11 @@ if __name__ == '__main__':
 
     # Run code
     evaluator = trackeval.Evaluator(eval_config)
-    dataset_list = [trackeval.datasets.MOTSChallenge(dataset_config)]
-    metrics_list = ['HOTA','CLEAR', 'Identity', 'VACE', 'JAndF']
-    metrics_list = [trackeval.metrics.HOTA(), trackeval.metrics.CLEAR(), trackeval.metrics.Identity(), trackeval.metrics.VACE(),
-                   trackeval.metrics.JAndF()]
-    #for metric in [trackeval.metrics.HOTA, trackeval.metrics.CLEAR, trackeval.metrics.Identity, trackeval.metrics.VACE,
-    #               trackeval.metrics.JAndF]:
-    #    if metric.get_name() in metrics_config['METRICS']:
-    #        metrics_list.append(metric())
+    dataset_list = [trackeval.datasets.PersonPath22(dataset_config)]
+    metrics_list = []
+    for metric in [trackeval.metrics.HOTA, trackeval.metrics.CLEAR, trackeval.metrics.Identity, trackeval.metrics.VACE]:
+        if metric.get_name() in metrics_config['METRICS']:
+            metrics_list.append(metric(metrics_config))
     if len(metrics_list) == 0:
         raise Exception('No metrics selected for evaluation')
     evaluator.evaluate(dataset_list, metrics_list)

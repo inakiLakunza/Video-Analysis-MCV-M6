@@ -39,7 +39,7 @@ def save_img(img, output, save_path, cfg):
     cv2.imwrite(save_path, out.get_image()[:, :, ::-1])
 
 
-def make_video(out_folder="./", img_folder=None, name="example_video"):
+def make_video(out_folder="./", img_folder=None, name="example_video", start=800, end=1000):
     """
     Make a .mp4 from the estimation
     https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
@@ -59,8 +59,8 @@ def make_video(out_folder="./", img_folder=None, name="example_video"):
     video=cv2.VideoWriter(os.path.join(out_folder, name+".avi"), fourcc, fps, (img_shape[0], img_shape[1]), True)
 
     
-    for j in range(0,duration//5):
-        img = cv2.imread(os.path.join(out_folder, "frame_"+str(j)+".png"))
+    for j in range(start, end):
+        img = cv2.imread(os.path.join(img_folder, "frame_"+str(j)+".png"))
         video.write(img)
 
 

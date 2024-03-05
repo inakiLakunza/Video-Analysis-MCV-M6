@@ -145,30 +145,48 @@ if __name__ == "__main__":
                 label_size, _ = cv2.getTextSize(id_label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
                 label_width, label_height = label_size
 
+                '''
                 # Compute centroid
                 centroid = ((int(x_min) + int(x_max)) // 2, (int(y_min) + int(y_max)) // 2)
                 if id_label not in id_motion.keys():
                     id_motion[id_label] = [centroid]
                 else:
                     id_motion[id_label].append(centroid)
-                    
+                '''
+
                 # Place the label at the top-left corner inside the bounding box
                 label_position = (x_min, y_min - 10)
                 label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
                 img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color, -1)  # -1 for filled rectangle
                 img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
                 
-                        
+        '''          
         # Draw motion
         for j in range(1, len(id_motion[id_label])):
             cv2.line(img, id_motion[id_label][j - 1], id_motion[id_label][j], bb_color, 5)
-        
+        '''
                 
         out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
         cv2.imwrite(out_path, img)
     
-    make_video(img_folder=out_img_path, name="video_task_2_1_det_th_07")
+    '''
+    out_img_path1 = "/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1/det_th_05"
+    make_video(img_folder=out_img_path1, start=800, end=950, name="video_task_2_1_det_th_05_1", out_folder="/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1")
+    print("video1 done")
+    make_video(img_folder=out_img_path1, start=450, end=600, name="video_task_2_1_det_th_05_2", out_folder="/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1")
+    print("video2 done")
+    make_video(img_folder=out_img_path1, start=1550, end=1700, name="video_task_2_1_det_th_05_3", out_folder="/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1")
+    print("video3 done")
 
+    '''
+    out_img_path2 = "/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1/det_th_07"
+    make_video(img_folder=out_img_path2, start=800, end=950, name="video_task_2_1_det_th_07_1", out_folder="/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1")
+    print("video4 done")
+    make_video(img_folder=out_img_path2, start=450, end=600, name="video_task_2_1_det_th_07_2", out_folder="/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1")
+    print("video5 done")
+    make_video(img_folder=out_img_path2, start=1550, end=1700, name="video_task_2_1_det_th_07_3", out_folder="/ghome/group07/test/W2/part2/task_2_1/outs_with_labels_2_1")
+    print("video6 done")
+    
 
 
 

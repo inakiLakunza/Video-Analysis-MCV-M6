@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     predictor = DefaultPredictor(cfg)
 
-    result_file_path = "./results_and_gt_csv/task_2_2.csv"
+    result_file_path = "./results_and_gt_csv/task_2_2_det_th_03.csv"
     # IF CSV FILE EXISTS, DELETE IT:
     try:
         os.remove(result_file_path)

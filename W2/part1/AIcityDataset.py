@@ -12,6 +12,17 @@ import json
 from typing import *
 
 
+
+def is_parked(element) -> bool:
+    attribute = element.find("attribute")
+    if attribute is None:
+        return False
+    elif attribute.text == "false":
+        return False
+    return True
+    
+
+
 class Dataset():
 
     def __init__(self,  frames_folder: str) -> None:
@@ -126,6 +137,7 @@ class Dataset():
             "annotations": annotations,
             "licenses": licenses
         }
+
         return coco_dict
     
 
@@ -140,13 +152,17 @@ class Dataset():
         for idx, image in enumerate(coco_dictionary['images']):
 
             gt = [{**x, 'bbox_mode': 1} for x in coco_dictionary['annotations'] if image['id'] == x['image_id']]
-            
+  
             if idx > start_validation_idx: using = val
             using.append({**image, 'image_id': image['id'], 'annotations': gt})
             everything.append({**image, 'image_id': image['id'], 'annotations': gt})
-        open('train_first.json', 'w').write(json.dumps(train))
-        open('everything.json', 'w').write(json.dumps(everything))
-        open('val_first.json', 'w').write(json.dumps(val))
+            #if idx == 5:
+            #    print(using)
+            #    exit()
+
+        open('datafolds/train_first.json', 'w').write(json.dumps(train))
+        open('datafolds/everything.json', 'w').write(json.dumps(everything))
+        open('datafolds/val_first.json', 'w').write(json.dumps(val))
 
 
         train, val = list(), list()
@@ -162,8 +178,8 @@ class Dataset():
         
         random.shuffle(train)
         random.shuffle(val)
-        open('train_random.json', 'w').write(json.dumps(train))
-        open('val_random.json', 'w').write(json.dumps(val))
+        open('datafolds/train_random.json', 'w').write(json.dumps(train))
+        open('datafolds/val_random.json', 'w').write(json.dumps(val))
 
         ### CROSS VALIDATION ####
         fold_1, fold_2, fold_3 = list(), list(), list()
@@ -181,13 +197,13 @@ class Dataset():
 
             using.append({**image, 'image_id': image['id'], 'annotations': gt})
 
-        open('fold1.json', 'w').write(json.dumps(fold_1))
-        open('fold2.json', 'w').write(json.dumps(fold_2))
-        open('fold3.json', 'w').write(json.dumps(fold_3))
+        open('datafolds/val_1.json', 'w').write(json.dumps(fold_1))
+        open('datafolds/val_2.json', 'w').write(json.dumps(fold_2))
+        open('datafolds/val_3.json', 'w').write(json.dumps(fold_3))
 
-        open('fold1+3.json', 'w').write(json.dumps(fold_1 + fold_3))
-        open('fold1+2.json', 'w').write(json.dumps(fold_1 + fold_2))
-        open('fold3+2.json', 'w').write(json.dumps(fold_3 + fold_2))
+        open('datafolds/train_13.json', 'w').write(json.dumps(fold_1 + fold_3))
+        open('datafolds/train_12.json', 'w').write(json.dumps(fold_1 + fold_2))
+        open('datafolds/train_32.json', 'w').write(json.dumps(fold_3 + fold_2))
         
 
 
@@ -196,7 +212,7 @@ if __name__ == '__main__':
     #unvideo_video('/home/adria/Desktop/mcv-m6-2023-team2/data/AICity_S03_c010/vdo.avi')
     #a = (generate_gt_from_xml('../data/AICity_S03_c010/ai_challenge_s03_c010-full_annotation.xml'))
 
-    d = Dataset(frames_folder="frame_dataset/gray")
-    annotations = d.map_xml2dict(xml_annotations_path='../ai_challenge_s03_c010-full_annotation.xml')
+    d = Dataset(frames_folder="../frame_dataset/color")
+    annotations = d.map_xml2dict(xml_annotations_path='../../ai_challenge_s03_c010-full_annotation.xml', ignore_parked=False)
     d.load_jsons(annotations)
     print(annotations['categories'])

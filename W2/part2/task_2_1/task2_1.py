@@ -1,4 +1,5 @@
 import sys
+sys.path.append('../')
 import os
 import json
 os.environ["KERAS_BACKEND"] = "torch"  # Or "jax" or "torch"!
@@ -15,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import pandas as pd
 from pathlib import Path
+import copy
 
 import detectron2
 from detectron2.utils.logger import setup_logger
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     # MASK RCNN
     #model = "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"
 
-    with open('./configs/configs_task2_1.json') as config:
+    with open('./../configs/configs_task2_1.json') as config:
         task_configs = json.load(config)
     detection_threshold = task_configs["detection_threshold"]
     min_iou = task_configs["min_iou"]
@@ -99,10 +101,12 @@ if __name__ == "__main__":
     #----------------------------------------------------------------------
 
     track_updater = Tracks_2_1(min_iou, max_frames_skip)
+    id_motion = {}
     for i in tqdm(range(N_FRAMES)):
 
         img_path = os.path.join(COLOR_FRAME_SET_PATH, str(i)+".png")
         img = cv2.imread(img_path)
+        img_copy = copy.deepcopy(img)
         preds = predictor(img)
 
         # Keep only car predictions
@@ -131,23 +135,39 @@ if __name__ == "__main__":
                 bb_color = frame_track.get_color()
                 bb = detection.get_bb()
 
-                #
-                #print("bb: ",bb)
-                #print()
-                #print("bboxes", bboxes)
-                # CHECK THAT THE RETURNED BOX IS FOUND IN bboxes
-                #debug_msg = """There is something wrong, the returned bounding
-                #box was not found in the bboxes list"""
-                #assert bb in bboxes, debug_msg
-
                 x_min, y_min, x_max, y_max = bb
                 mins = int(x_min), int(y_min)
                 maxs = int(x_max), int(y_max)
                 img = cv2.rectangle(img, mins, maxs, bb_color, bb_thickness)
                 
+                # Draw a smaller rectangle for ID label
+                id_label = f"ID: {frame_track.get_track_id()}"
+                label_size, _ = cv2.getTextSize(id_label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+                label_width, label_height = label_size
+
+                # Compute centroid
+                centroid = ((int(x_min) + int(x_max)) // 2, (int(y_min) + int(y_max)) // 2)
+                if id_label not in id_motion.keys():
+                    id_motion[id_label] = [centroid]
+                else:
+                    id_motion[id_label].append(centroid)
+                    
+                # Place the label at the top-left corner inside the bounding box
+                label_position = (x_min, y_min - 10)
+                label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
+                img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color, -1)  # -1 for filled rectangle
+                img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                
+                        
+        # Draw motion
+        for j in range(1, len(id_motion[id_label])):
+            cv2.line(img, id_motion[id_label][j - 1], id_motion[id_label][j], bb_color, 5)
+        
+                
         out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
         cv2.imwrite(out_path, img)
-
+    
+    make_video(img_folder=out_img_path, name="video_task_2_1_det_th_07")
 
 
 

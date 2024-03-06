@@ -38,7 +38,7 @@ Fixed Gaussian Modeling with an alpha of 2 for the first 60 frames of the sequen
 
 ## Week 2: Object detection and Tracking
 This second week we had to implement and evaluate different SOTA models for object detection and tracking algorithms.
-Our annotated sequence can be found at [/W2/part1/task_1_2/annotations.xml](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part1/task_1_2/annotations.xml).
+Our annotated sequence can be found at [/W2/part1/task_1_2/annotations.xml](https://raw.githubusercontent.com/mcv-m6-video/mcv-c6-2024-team6/main/W2/part1/task_1_2/annotations.xml).
 - Task 1: Object Detection
     - Task 1.1: Off-the-shelf
     - Task 1.2: Annotation

@@ -39,4 +39,9 @@ To evaluate your data you have the **Evaluator.ipynb** with the steps defined to
 If you want to finetunne your data you have the **Finetune.ipynb** file with the steps to do it step by step
 
 
+## Custom Loaders
+
+If you have your own annotations or you want to create your own partition you need to add the functionality in the file **data_loaders.py**
+
+
 

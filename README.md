@@ -38,6 +38,7 @@ Fixed Gaussian Modeling with an alpha of 2 for the first 60 frames of the sequen
 
 ## Week 2: Object detection and Tracking
 This second week we had to implement and evaluate different SOTA models for object detection and tracking algorithms.
+Our annotated sequence can be found at [/W2/part1/task_1_2/annotations.xml](https://raw.githubusercontent.com/mcv-m6-video/mcv-c6-2024-team6/main/W2/part1/task_1_2/annotations.xml).
 - Task 1: Object Detection
     - Task 1.1: Off-the-shelf
     - Task 1.2: Annotation
@@ -57,5 +58,5 @@ This second week we had to implement and evaluate different SOTA models for obje
 ##### Tracking with Kalman Filtering:
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_2/task_2_2/gif_for_README/gif_README.gif" width="400" height="auto">
 
-##### CVPR 2021 AI City Challenge 
+##### CVPR 2021 AI City Challenge
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_3/results_and_gt/example_gif.gif" width="400" height="auto">

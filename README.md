@@ -34,5 +34,24 @@ This first week was focused on background estimation to be able to segment the m
 #### Some example results
 Fixed Gaussian Modeling with an alpha of 2 for the first 60 frames of the sequence.
 
-<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W1/task1/gifs/init_alpha_2.gif" width="400" height="auto">
+<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W1/task1/gifs/init_alpha_2.gif" width="600" height="auto">
+
+## Week 2: Object detection and Tracking
+This second week we had to implement and evaluate different SOTA models for object detection and tracking algorithms.
+- Task 1: Object Detection
+    - Task 1.1: Off-the-shelf
+    - Task 1.2: Annotation
+    - Task 1.3: Fine-tune to our annotated sequence
+    - Task 1.4: K-Fold Cross-validation
+- Task 2: Object tracking
+    - Task 2.1: Overlapping method
+    - Task 2.2: Kalman filtering
+    - Task 2.3: TrackEval Metrics
+- Task 3: **(OPTIONAL)** CVPR 2021 AI City Challenge
+
+#### Some example results
+Explicar...
+
+<img src="" width="400" height="auto">
+
 

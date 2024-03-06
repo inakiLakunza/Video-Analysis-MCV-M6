@@ -50,8 +50,10 @@ This second week we had to implement and evaluate different SOTA models for obje
 - Task 3: **(OPTIONAL)** CVPR 2021 AI City Challenge
 
 #### Some example results
-Explicar...
 
-<img src="" width="400" height="auto">
+##### Tracking by Overlap:
+<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_2/task_2_1/gifs/video_task_2_1_det_th_05_1.gif" width="400" height="auto">
 
 
+##### CVPR 2021 AI City Challenge 
+<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_3/results_and_gt/example_gif.gif" width="400" height="auto">

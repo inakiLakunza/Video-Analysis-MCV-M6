@@ -27,7 +27,7 @@ def save_img(img, output, save_path, cfg):
     cv2.imwrite(save_path, out.get_image()[:, :, ::-1])
 
 
-def make_video(out_folder):
+def make_video(estimation):
     """
     Make a .mp4 from the estimation
     https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv
@@ -35,18 +35,39 @@ def make_video(out_folder):
     Parameters
         estimation : np.ndarray([1606, 1080, 1920, 3], dtype=uint8)
     """
-    
-    duration = 2141
-    img_shape = 1920, 1080 
+    size = estimation.shape[1], estimation.shape[2]
+    duration = estimation.shape[0]
     fps = 10
+    out = cv2.VideoWriter(f'./Example_sequence.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[1], size[0]), True)
+    for i in range(duration):
+        data = (estimation[i]).astype(np.uint8)
+        # I am converting the data to gray but we should look into this...
+        data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
+        out.write(data)
+    out.release()
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
-    video=cv2.VideoWriter('example_video.avi', fourcc, fps, (img_shape[0], img_shape[1]), True)
+if __name__ == "__main__":
+    import os
+    import pickle
+    import matplotlib.pyplot as plt
+    import glob
+    
+
+    image_list = []
+    filenames = []
+
+    for filename in glob.glob('plot_results/first_no_shuffle/*.jpg'): 
+        path = (os.path.join(filename))
+        filenames.append(path)
+    
+    filenames = sorted(filenames)
 
     
-    for j in range(0,duration//5):
-        img = cv2.imread(os.path.join(out_folder, "frame_"+str(j)+".png"))
-        video.write(img)
+    #(sorted(filenames, key=lambda x: int(x.split("/")[-1].split(".")[-2].split("_")[-1]))[:60])
+    for path in filenames:
+        image_list.append(cv2.imread(path))
 
-
+    # Output GIF path
+    # Create GIF
+    make_video(np.array(image_list[:250]))
     

@@ -22,9 +22,17 @@ cd WX/taskX_X/
 python3 main.py
 ```
 
-# Week 1: Background estimation
-This first week was focused on...
+## Week 1: Background estimation
+This first week was focused on background estimation to be able to segment the moving objects. Thorough this lab we will work with the AICityData dataset.
+- Task 1.1: Fixed Gaussian Estimation
+- Task 1.2: Evaluation mAP
+- Task 2.1: Adaptative Modelling
+- Task 2.2: Comparison between fixed and adaptative
+- Task 3: Comparison with SOTA models (CNT, LSBP, GMG, MOG, ...)
+- Task 4: Color sequences
 
-### Some example results
-![gif](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W1/task1/gifs/init_alpha_2.gif)
+#### Some example results
+Fixed Gaussian Modeling with an alpha of 2 for the first 60 frames of the sequence.
+
+<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W1/task1/gifs/init_alpha_2.gif" width="400" height="auto">
 

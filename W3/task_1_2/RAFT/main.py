@@ -72,3 +72,11 @@ axes[1].axis('off')
 plt.tight_layout()
 plt.savefig('result.png')
 plt.close(fig)
+
+# Save og optical flow
+original_size = curr_img_og.size[::-1]
+resized_flow = torch.nn.functional.interpolate(predicted_flows, size=original_size, mode='bilinear', align_corners=False)
+
+resized_flow = resized_flow.detach()
+resized_flow_np = resized_flow.squeeze().cpu().numpy()
+np.save('../results/Raft.npy', resized_flow_np)

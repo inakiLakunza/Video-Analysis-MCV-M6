@@ -39,7 +39,7 @@ e = time.time()
 print('Time Taken: %.2f seconds for image of size (%d, %d, %d)' % (
     e - s, im1.shape[0], im1.shape[1], im1.shape[2]))
 flow = np.concatenate((u[..., None], v[..., None]), axis=2)
-np.save('examples/outFlow.npy', flow)
+np.save('../results/PyFlow.npy', flow)
 
 if args.viz:
     import cv2

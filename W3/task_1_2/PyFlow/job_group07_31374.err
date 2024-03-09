@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/export/home/group07/test/W3/task_1_2/PyFlow/demo.py", line 21, in <module>
+    im1 = im1.reshape([im1.shape[0], im1.shape[1], 1])
+ValueError: cannot reshape array of size 1399848 into shape (376,1241,1)

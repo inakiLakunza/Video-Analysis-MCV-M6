@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/export/home/group07/test/W3/task_1_2/PyFlow/demo.py", line 54, in <module>
+    hsv[:, :, 1] = 255
+IndexError: index 1 is out of bounds for axis 2 with size 1

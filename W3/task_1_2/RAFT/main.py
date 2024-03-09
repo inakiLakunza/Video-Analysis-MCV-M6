@@ -14,7 +14,7 @@ Example taken from PyTorch docs: https://pytorch.org/vision/0.12/auto_examples/p
 # Prepare images
 curr_img_og = Image.open('../../data_stereo_flow/training/colored_0/000045_10.png').convert('RGB')
 ref_img_og = Image.open('../../data_stereo_flow/training/colored_0/000045_11.png').convert('RGB')
-gt = Image.open('../../data_stereo_flow/training/flow_noc/000045_10.png').convert('RGB')
+gt = Image.open('../../data_stereo_flow/training/flow_noc/000045_10.png')
 
 def preprocess(batch):
     transforms = T.Compose(
@@ -78,5 +78,6 @@ original_size = curr_img_og.size[::-1]
 resized_flow = torch.nn.functional.interpolate(predicted_flows, size=original_size, mode='bilinear', align_corners=False)
 
 resized_flow = resized_flow.detach()
-resized_flow_np = resized_flow.squeeze().cpu().numpy()
+resized_flow = resized_flow.squeeze().permute(1, 2, 0)
+resized_flow_np = resized_flow.cpu().numpy()
 np.save('../results/Raft.npy', resized_flow_np)

@@ -13,4 +13,13 @@ Pyramid level 3
 Pyramid level 2
 Pyramid level 1
 Pyramid level 0
-Time Taken: 6.56 seconds for image of size (376, 1241, 1)
+Reading 376 x 1241 flow file in .png format
+(376, 1241, 3)
+
+TIME (PyFlow): 6.5791s
+TIME (RAFT): 1.5338s
+
+MSEN (PyFlow): 0.9371
+MSEN (RAFT): 0.6472
+PEPN (PyFlow): 7.40%
+PEPN (RAFT): 3.14%

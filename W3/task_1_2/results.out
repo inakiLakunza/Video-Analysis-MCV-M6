@@ -16,10 +16,17 @@ Pyramid level 0
 Reading 376 x 1241 flow file in .png format
 (376, 1241, 3)
 
-TIME (PyFlow): 6.5791s
-TIME (RAFT): 1.5338s
+TIME (PyFlow): 6.3564s
+TIME (RAFT): 0.9836s
+TIME (GMFlow No Refine): 0.8702s
+TIME (GMFlow): 1.0199s
 
 MSEN (PyFlow): 0.9371
 MSEN (RAFT): 0.6472
+MSEN (GMFlow No Refine): 0.7066
+MSEN (GMFlow): 0.6010
+
 PEPN (PyFlow): 7.40%
 PEPN (RAFT): 3.14%
+PEPN (GMFlow No Refine): 2.70%
+PEPN (GMFlow): 2.66%

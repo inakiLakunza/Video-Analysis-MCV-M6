@@ -2,7 +2,9 @@ import cv2
 import time
 import numpy as np
 from PIL import Image
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+import matplotlib.cm as cm
 from PyFlow import demo as pyflow_query
 from RAFT import main as raft_query
 from OpticalFlowToolkit.lib import flowlib # https://github.com/liruoteng/OpticalFlowToolkit
@@ -77,21 +79,28 @@ def visualize_magdir(im1_path: str, flow, filename):
     cv2.imwrite(f'./results/magnitude_dir_{filename}.png', bgr)
 
 
-def visualize_arrow(im1_path: str, flow, filename):
-    im1 = np.array(Image.open(im1_path).convert('RGB'))
-    im1 = im1.astype(float) / 255.
-    fig, ax = plt.subplots(figsize=(8, 8))
+def visualize_arrow(im1_path: str, flow, filename: str):
+    im1 = cv2.imread(im1_path)
+    im1 = cv2.cvtColor(im1, cv2.COLOR_BGR2RGB)
+    h, w = flow.shape[:2]
+    flow_horizontal = flow[:, :, 0]
+    flow_vertical = flow[:, :, 1]
 
-    # Background image
-    ax.imshow(im1)
-    step = 10 # tune this
-    x, y = np.meshgrid(np.arange(0, flow.shape[1], step), np.arange(0, flow.shape[0], step))
-    u = flow[y, x, 0]
-    v = flow[y, x, 1]
+    step_size = 10
+    X, Y = np.meshgrid(np.arange(0, w, step_size), np.arange(0, h, step_size))
+    U = flow_horizontal[Y, X]
+    V = flow_vertical[Y, X]
     
-    quiver = ax.quiver(x, y, u, v, angles='xy', scale_units='xy', scale=1, width=0.0015, headwidth=5)    
-
-    plt.savefig(f'./results/arrow_{filename}.png', dpi=300, bbox_inches='tight')
+    magnitude = np.sqrt(U**2 + V**2)
+    norm = Normalize()
+    norm.autoscale(magnitude)
+    cmap = cm.inferno
+    
+    plt.figure(figsize=(10, 10))
+    plt.imshow(im1)
+    plt.quiver(X, Y, U, V, norm(magnitude), angles='xy', scale_units='xy', scale=1, cmap=cmap, width=0.005)
+    plt.axis('off')
+    plt.savefig(f'./results/arrow_{filename}.png', dpi=300, bbox_inches='tight', pad_inches=0)
     plt.close()
 
 
@@ -136,23 +145,38 @@ if __name__ == '__main__':
     # Optical flows
     flow_pyflow, ela_pyflow = compute_pyflow(im1_path, im2_path)
     flow_raft, ela_raft = compute_raft(im1_path, im2_path)
+    print(flow_raft.shape)
+    flow_gme_noref = np.load('./results/GMFlow_norefine.npy')
+    flow_gme = np.load('./results/GMFlow.npy')
     print(f"\nTIME (PyFlow): {ela_pyflow:.4f}s")
     print(f"TIME (RAFT): {ela_raft:.4f}s")
+    print(f"TIME (GMFlow No Refine): {0.8701519966125488:.4f}s") # /W3/task_1_2/gmflow/gmflow.out
+    print(f"TIME (GMFlow): {1.0198571681976318:.4f}s") # /W3/task_1_2/gmflow/gmflow_refine.out
 
     # MSEN
     msen_pyflow = calculate_msen(flow_gt, flow_pyflow)
     msen_raft = calculate_msen(flow_gt, flow_raft)
+    msen_gme_noref = calculate_msen(flow_gt, flow_gme_noref)
+    msen_gme = calculate_msen(flow_gt, flow_gme)
     print(f"\nMSEN (PyFlow): {msen_pyflow:.4f}")
-    print(f"MSEN (RAFT): {msen_raft:.4f}")
+    print(f"MSEN (RAFT): {msen_raft:.4f}")   
+    print(f"MSEN (GMFlow No Refine): {msen_gme_noref:.4f}")
+    print(f"MSEN (GMFlow): {msen_gme:.4f}")
 
     # PEPN
     pepn_pyflow = calculate_pepn(flow_gt, flow_pyflow)
     pepn_raft = calculate_pepn(flow_gt, flow_raft)
+    pepn_gme_noref = calculate_pepn(flow_gt, flow_gme_noref)
+    pepn_gme = calculate_pepn(flow_gt, flow_gme)
     print(f"\nPEPN (PyFlow): {pepn_pyflow * 100:.2f}%")
     print(f"PEPN (RAFT): {pepn_raft * 100:.2f}%")
+    print(f"PEPN (GMFlow No Refine): {pepn_gme_noref * 100:.2f}%")
+    print(f"PEPN (GMFlow): {pepn_gme * 100:.2f}%")
 
     # Save results
-    visualize_flowvis(im1_path, flow_gt, filename="GT")
-    visualize_flowvis(im1_path, flow_pyflow, filename="PyFlow")
-    visualize_flowvis(im1_path, flow_raft, filename="RAFT")
+    visualize_arrow(im1_path, flow_gt, filename="GT")
+    visualize_arrow(im1_path, flow_pyflow, filename="PyFlow")
+    visualize_arrow(im1_path, flow_raft, filename="RAFT")
+    visualize_arrow(im1_path, flow_gme_noref, filename="GMFlow_noref")
+    visualize_arrow(im1_path, flow_gme, filename="GMFlow")
 

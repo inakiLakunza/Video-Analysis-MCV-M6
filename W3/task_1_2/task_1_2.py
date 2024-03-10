@@ -86,7 +86,7 @@ def visualize_arrow(im1_path: str, flow, filename: str):
     flow_horizontal = flow[:, :, 0]
     flow_vertical = flow[:, :, 1]
 
-    step_size = 10
+    step_size = 12
     X, Y = np.meshgrid(np.arange(0, w, step_size), np.arange(0, h, step_size))
     U = flow_horizontal[Y, X]
     V = flow_vertical[Y, X]
@@ -98,7 +98,7 @@ def visualize_arrow(im1_path: str, flow, filename: str):
     
     plt.figure(figsize=(10, 10))
     plt.imshow(im1)
-    plt.quiver(X, Y, U, V, norm(magnitude), angles='xy', scale_units='xy', scale=1, cmap=cmap, width=0.005)
+    plt.quiver(X, Y, U, V, norm(magnitude), angles='xy', scale_units='xy',  scale=1, cmap=cmap, width=0.0015)
     plt.axis('off')
     plt.savefig(f'./results/arrow_{filename}.png', dpi=300, bbox_inches='tight', pad_inches=0)
     plt.close()

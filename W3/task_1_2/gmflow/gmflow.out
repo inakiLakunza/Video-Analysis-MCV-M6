@@ -1,0 +1,7 @@
+Number of params: 4680288
+Load checkpoint: pretrained/gmflow_kitti-285701a8.pth
+start_epoch: 0, start_step: 0
+inference
+2 images found
+TIME INFERENCE 0.8200795650482178s
+Saving on ../results/GMFlow_norefine.npy ...

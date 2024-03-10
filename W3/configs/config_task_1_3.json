@@ -1,0 +1,10 @@
+{
+
+    "detection_threshold": 0.7,
+    "min_iou": 0.5,
+    "max_frames_skip": 15,
+
+    "bb_thickness": 5,
+    "out_img_path": "/ghome/group07/test/W3/task_1_3/out_imgs"
+
+}

@@ -2,10 +2,11 @@ import cv2
 import time
 import numpy as np
 from PIL import Image
+from matplotlib import pyplot as plt
 from PyFlow import demo as pyflow_query
 from RAFT import main as raft_query
 from OpticalFlowToolkit.lib import flowlib # https://github.com/liruoteng/OpticalFlowToolkit
-
+import flow_vis
 
 # MODELS ===========================================================
 
@@ -59,7 +60,11 @@ def calculate_pepn(gt_flow, pred_flow, th=3):
 
 # MISC ============================================================
 
-def visualize(im1_path: str, flow, filename):
+def visualize_flowvis(im1_path: str, flow, filename):
+    flow_color = flow_vis.flow_to_color(flow[:, :, :2], convert_to_bgr=True)
+    cv2.imwrite(f'./results/flow_vis_{filename}.png', flow_color)
+
+def visualize_magdir(im1_path: str, flow, filename):
     im1 = np.array(Image.open(im1_path).convert('RGB'))
     im1 = im1.astype(float) / 255.
     hsv = np.zeros(im1.shape, dtype=np.uint8)
@@ -70,6 +75,54 @@ def visualize(im1_path: str, flow, filename):
     hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
     bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
     cv2.imwrite(f'./results/magnitude_dir_{filename}.png', bgr)
+
+
+def visualize_arrow(im1_path: str, flow, filename):
+    im1 = np.array(Image.open(im1_path).convert('RGB'))
+    im1 = im1.astype(float) / 255.
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    # Background image
+    ax.imshow(im1)
+    step = 10 # tune this
+    x, y = np.meshgrid(np.arange(0, flow.shape[1], step), np.arange(0, flow.shape[0], step))
+    u = flow[y, x, 0]
+    v = flow[y, x, 1]
+    
+    quiver = ax.quiver(x, y, u, v, angles='xy', scale_units='xy', scale=1, width=0.0015, headwidth=5)    
+
+    plt.savefig(f'./results/arrow_{filename}.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+def visualize_direction_idx_plot(im1_path: str, flow, filename):
+    im1 = np.array(Image.open(im1_path).convert('RGB'))
+    im1 = im1.astype(float) / 255.
+    fig, ax = plt.subplots(figsize=(8, 8))
+    
+    # Background
+    ax.imshow(im1)
+
+    step = 10
+    x, y = np.meshgrid(np.arange(0, flow.shape[1], step), np.arange(0, flow.shape[0], step))
+    u = flow[y, x, 0]
+    v = flow[y, x, 1]
+    
+    direction = np.arctan2(v, u)
+    norm = plt.Normalize(vmin=-np.pi, vmax=np.pi)
+    cmap = plt.cm.hsv
+    colors = cmap(norm(direction))
+    colors = colors.reshape(-1, colors.shape[-1])
+    quiver = ax.quiver(x, y, u, v, color=colors, angles='xy', scale_units='xy', scale=1, width=0.0015, headwidth=5)
+
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])  # Empty array for colorbar
+    cbar = fig.colorbar(sm, ax=ax, ticks=[-np.pi, -np.pi/2, 0, np.pi/2, np.pi])
+    cbar.set_ticklabels(['-π', '-π/2', '0', 'π/2', 'π'])
+    cbar.set_label('Direction')
+    plt.savefig(f'./results/{filename}_direction.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
 
 
 
@@ -99,7 +152,7 @@ if __name__ == '__main__':
     print(f"PEPN (RAFT): {pepn_raft * 100:.2f}%")
 
     # Save results
-    visualize(im1_path, flow_gt, filename="GT")
-    visualize(im1_path, flow_pyflow, filename="PyFlow")
-    visualize(im1_path, flow_raft, filename="RAFT")
+    visualize_flowvis(im1_path, flow_gt, filename="GT")
+    visualize_flowvis(im1_path, flow_pyflow, filename="PyFlow")
+    visualize_flowvis(im1_path, flow_raft, filename="RAFT")
 

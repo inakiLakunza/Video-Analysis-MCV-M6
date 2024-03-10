@@ -1,3 +1,4 @@
+import cv2
 import time
 import numpy as np
 from PIL import Image
@@ -5,23 +6,6 @@ from PyFlow import demo as pyflow_query
 from RAFT import main as raft_query
 from OpticalFlowToolkit.lib import flowlib # https://github.com/liruoteng/OpticalFlowToolkit
 
-
-
-""" From the Kitty Development Benchmark Suite:
-
-Data format:
-============
-
-Optical flow maps are saved as 3-channel uint16 PNG images: The first channel
-contains the u-component, the second channel the v-component and the third
-channel denotes if a valid ground truth optical flow value exists for that
-pixel (1 if true, 0 otherwise). To convert the u-/v-flow into floating point
-values, convert the value to float, subtract 2^15 and divide the result by 64:
-
-flow_u(u,v) = ((float)I(u,v,1)-2^15)/64.0;
-flow_v(u,v) = ((float)I(u,v,2)-2^15)/64.0;
-valid(u,v)  = (bool)I(u,v,3);
-"""
 
 # MODELS ===========================================================
 
@@ -73,6 +57,21 @@ def calculate_pepn(gt_flow, pred_flow, th=3):
     return np.sum(sqrt_error_masked > th) / len(sqrt_error_masked)
 
 
+# MISC ============================================================
+
+def visualize(im1_path: str, flow, filename):
+    im1 = np.array(Image.open(im1_path).convert('RGB'))
+    im1 = im1.astype(float) / 255.
+    hsv = np.zeros(im1.shape, dtype=np.uint8)
+    hsv[:, :, 0] = 255
+    hsv[:, :, 1] = 255
+    mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+    hsv[..., 0] = ang * 180 / np.pi / 2
+    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    cv2.imwrite(f'./results/magnitude_dir_{filename}.png', bgr)
+
+
 
 if __name__ == '__main__':
     im1_path = '../data_stereo_flow/training/colored_0/000045_10.png'
@@ -83,19 +82,24 @@ if __name__ == '__main__':
     
     # Optical flows
     flow_pyflow, ela_pyflow = compute_pyflow(im1_path, im2_path)
-    raft_flow, ela_raft = compute_raft(im1_path, im2_path)
+    flow_raft, ela_raft = compute_raft(im1_path, im2_path)
     print(f"\nTIME (PyFlow): {ela_pyflow:.4f}s")
     print(f"TIME (RAFT): {ela_raft:.4f}s")
 
     # MSEN
     msen_pyflow = calculate_msen(flow_gt, flow_pyflow)
-    msen_raft = calculate_msen(flow_gt, raft_flow)
+    msen_raft = calculate_msen(flow_gt, flow_raft)
     print(f"\nMSEN (PyFlow): {msen_pyflow:.4f}")
     print(f"MSEN (RAFT): {msen_raft:.4f}")
 
     # PEPN
     pepn_pyflow = calculate_pepn(flow_gt, flow_pyflow)
-    pepn_raft = calculate_pepn(flow_gt, raft_flow)
-    print(f"PEPN (PyFlow): {pepn_pyflow * 100:.2f}%")
+    pepn_raft = calculate_pepn(flow_gt, flow_raft)
+    print(f"\nPEPN (PyFlow): {pepn_pyflow * 100:.2f}%")
     print(f"PEPN (RAFT): {pepn_raft * 100:.2f}%")
+
+    # Save results
+    visualize(im1_path, flow_gt, filename="GT")
+    visualize(im1_path, flow_pyflow, filename="PyFlow")
+    visualize(im1_path, flow_raft, filename="RAFT")
 

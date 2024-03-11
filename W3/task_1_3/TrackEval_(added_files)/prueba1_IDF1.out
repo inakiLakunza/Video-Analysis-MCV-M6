@@ -1,0 +1,70 @@
+
+Eval Config:
+USE_PARALLEL         : False                         
+NUM_PARALLEL_CORES   : 1                             
+BREAK_ON_ERROR       : True                          
+RETURN_ON_ERROR      : False                         
+LOG_ON_ERROR         : /export/home/group07/test/W3/task_1_3/TrackEval/error_log.txt
+PRINT_RESULTS        : True                          
+PRINT_ONLY_COMBINED  : False                         
+PRINT_CONFIG         : True                          
+TIME_PROGRESS        : True                          
+DISPLAY_LESS_PROGRESS : False                         
+OUTPUT_SUMMARY       : True                          
+OUTPUT_EMPTY_CLASSES : True                          
+OUTPUT_DETAILED      : True                          
+PLOT_CURVES          : True                          
+
+MotChallenge2DBox Config:
+PRINT_CONFIG         : True                          
+GT_FOLDER            : /export/home/group07/test/W3/task_1_3/TrackEval/data/gt/mot_challenge/
+TRACKERS_FOLDER      : /export/home/group07/test/W3/task_1_3/TrackEval/data/trackers/mot_challenge/
+OUTPUT_FOLDER        : None                          
+TRACKERS_TO_EVAL     : None                          
+CLASSES_TO_EVAL      : ['pedestrian']                
+BENCHMARK            : ai_challenge                  
+SPLIT_TO_EVAL        : train                         
+INPUT_AS_ZIP         : False                         
+DO_PREPROC           : False                         
+TRACKER_SUB_FOLDER   : data                          
+OUTPUT_SUB_FOLDER    :                               
+TRACKER_DISPLAY_NAMES : None                          
+SEQMAP_FOLDER        : None                          
+SEQMAP_FILE          : None                          
+SEQ_INFO             : None                          
+GT_LOC_FORMAT        : {gt_folder}/{seq}/gt/gt.txt   
+SKIP_SPLIT_FOL       : False                         
+
+Identity Config:
+METRICS              : ['Identity']                  
+THRESHOLD            : 0.5                           
+PRINT_CONFIG         : True                          
+
+Evaluating 1 tracker(s) on 1 sequence(s) for 1 class(es) on MotChallenge2DBox dataset using the following metrics: Identity, Count
+
+
+Evaluating task_1_3_prueba1
+
+    MotChallenge2DBox.get_raw_seq_data(task_1_3_prueba1, ai_challenge-03)  0.4016 sec
+    MotChallenge2DBox.get_preprocessed_seq_data(pedestrian)                0.2792 sec
+    Identity.eval_sequence()                                               0.0427 sec
+    Count.eval_sequence()                                                  0.0000 sec
+1 eval_sequence(ai_challenge-03, task_1_3_prueba1)                       0.7351 sec
+
+All sequences for task_1_3_prueba1 finished in 0.74 seconds
+
+Identity: task_1_3_prueba1-pedestrianIDF1      IDR       IDP       IDTP      IDFN      IDFP      
+ai_challenge-03                    54.398    46.193    66.147    9975      11619     5105      
+COMBINED                           54.398    46.193    66.147    9975      11619     5105      
+
+Count: task_1_3_prueba1-pedestrian Dets      GT_Dets   IDs       GT_IDs    
+ai_challenge-03                    15080     21594     354       56        
+COMBINED                           15080     21594     354       56        
+
+Timing analysis:
+MotChallenge2DBox.get_raw_seq_data                                     0.4016 sec
+MotChallenge2DBox.get_preprocessed_seq_data                            0.2792 sec
+Identity.eval_sequence                                                 0.0427 sec
+Count.eval_sequence                                                    0.0000 sec
+eval_sequence                                                          0.7351 sec
+Evaluator.evaluate                                                     0.7360 sec

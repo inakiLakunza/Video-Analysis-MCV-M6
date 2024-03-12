@@ -83,6 +83,11 @@ if __name__ == "__main__":
     max_frames_skip = task_configs["max_frames_skip"]
     bb_thickness = task_configs["bb_thickness"]
     out_img_path = task_configs["out_img_path"]
+    result_file_path = task_configs["result_file_path"]
+
+    if not os.path.exists(out_img_path):
+        os.makedirs(out_img_path)
+
 
     # FASTER RCNN
     model = "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml"
@@ -94,7 +99,6 @@ if __name__ == "__main__":
 
     predictor = DefaultPredictor(cfg)
 
-    result_file_path = "/ghome/group07/test/W3/task_1_3/results_and_gt/task_1_3_RAFT_det_th_07_iou_05.csv"
     # IF CSV FILE EXISTS, DELETE IT:
     try:
         os.remove(result_file_path)
@@ -137,7 +141,7 @@ if __name__ == "__main__":
             nms_detections.append(det)
 
 
-        track_updater.update_tracks(nms_detections, i)
+        track_updater.update_tracks(nms_detections, i, moved=False)
         frame_tracks = track_updater.get_tracks()
         print(f"Frame {i} has a total number of {len(frame_tracks)} shown\n\n")
 
@@ -159,17 +163,17 @@ if __name__ == "__main__":
                     line = f"{i+1}, {frame_id+1}, {x_min+1}, {y_min+1}, {width}, {height}, {score}, -1, -1, -1\n"
                     file.write(line)
 
-
+        '''
         for frame_track in frame_tracks:
             if frame_track.get_last_frame_id() == i:
                 detection = frame_track.get_last_detection()
-                bb_color = frame_track.get_color()
+                bb_color_normal = (0,0,255)
                 bb = detection.get_bb()
 
                 x_min, y_min, x_max, y_max = bb
                 mins = int(x_min), int(y_min)
                 maxs = int(x_max), int(y_max)
-                img = cv2.rectangle(img, mins, maxs, bb_color, bb_thickness)
+                img = cv2.rectangle(img, mins, maxs, bb_color_normal, bb_thickness)
                 
                 # Draw a smaller rectangle for ID label
                 id_label = f"ID: {frame_track.get_track_id()}"
@@ -180,13 +184,40 @@ if __name__ == "__main__":
                 # Place the label at the top-left corner inside the bounding box
                 label_position = (x_min, y_min - 10)
                 label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
-                img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color, -1)  # -1 for filled rectangle
+                img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color_normal, -1)  # -1 for filled rectangle
                 img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+
+                bb_color_displaced = (255, 0, 0)
+                displacement_x, displacement_y = detection.of_direction
+                x_min, y_min, x_max, y_max = bb
+                x_min += displacement_x 
+                y_min += displacement_y
+                x_max += displacement_x
+                y_max += displacement_y
+                mins = int(x_min), int(y_min)
+                maxs = int(x_max), int(y_max)
+                img = cv2.rectangle(img, mins, maxs, bb_color_displaced, bb_thickness)
                 
+                # Draw a smaller rectangle for ID label
+                id_label = f"ID: {frame_track.get_track_id()}"
+                label_size, _ = cv2.getTextSize(id_label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+                label_width, label_height = label_size
+
+
+                # Place the label at the top-left corner inside the bounding box
+                label_position = (x_min, y_min - 10)
+                label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
+                img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color_displaced, -1)  # -1 for filled rectangle
+                img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
                 
         out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
         cv2.imwrite(out_path, img)
 
-
+        save_pickle_path = task_configs["save_pickle_path"]
+        with open(save_pickle_path, 'wb') as outp:
+            pickle.dump(track_updater, outp)
+        '''
 
                 

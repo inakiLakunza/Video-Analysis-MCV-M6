@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import pandas as pd
 from pathlib import Path
+import cv2
 import copy
 
 import detectron2
@@ -35,12 +36,16 @@ from detectron2.structures import BoxMode
 from detectron2.engine import DefaultTrainer
 
 from pycocotools.mask import toBbox
-import cv2
+
 import torch
 
 from pathlib import Path
 import random 
 
+
+from sort import Sort
+
+tracker = Sort()
 
 if __name__ == "__main__":
 
@@ -77,8 +82,12 @@ if __name__ == "__main__":
     min_iou = task_configs["min_iou"]
     max_frames_skip = task_configs["max_frames_skip"]
     bb_thickness = task_configs["bb_thickness"]
-    #out_img_path = task_configs["out_img_path"]
-    out_img_path = "/ghome/group07/test/W3/task_1_3/bbs_normal_and_rect"
+    out_img_path = "/ghome/group07/test/W3/task_1_3/out_imgs_moved_in_past"
+    #result_file_path = task_configs["result_file_path"]
+
+    if not os.path.exists(out_img_path):
+        os.makedirs(out_img_path)
+
 
     # FASTER RCNN
     model = "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml"
@@ -90,27 +99,20 @@ if __name__ == "__main__":
 
     predictor = DefaultPredictor(cfg)
 
-    # EXAMPLE
-    #----------------------------------------------------------------------
-    #try_img_path = "/ghome/group07/test/W2/frame_dataset/color/0.png"
-    #try_img = cv2.imread(try_img_path)
-    #output = predictor(try_img)
-
-    #print("Ouput of pred_classes:\n", output["instances"].pred_classes)
-    #print("\n\n\nOutput of instances: \n", output["instances"].pred_boxes)
-    #print("\n\n\nWhole output:\n", output)
-
-    #save_img(try_img, output, "predicted_img_example.png", cfg)
-    #----------------------------------------------------------------------
-
     track_updater = Tracks_2_1(min_iou, max_frames_skip)
     id_motion = {}
+    #for i in tqdm(range(N_FRAMES)):
     for i in tqdm(range(N_FRAMES)):
-    #for i in tqdm(range(400, 600)):
 
         img_path = os.path.join(COLOR_FRAME_SET_PATH, str(i)+".png")
         img = cv2.imread(img_path)
         img_copy = copy.deepcopy(img)
+
+        if i>0:
+            img_path_past = os.path.join(out_img_path, "frame_"+str(i-1)+".png")
+            img_past = cv2.imread(img_path_past)
+            img_copy_past = copy.deepcopy(img_past)
+
         preds = predictor(img)
 
         # Keep only car predictions
@@ -141,6 +143,7 @@ if __name__ == "__main__":
         frame_tracks = track_updater.get_tracks()
         print(f"Frame {i} has a total number of {len(frame_tracks)} shown\n\n")
 
+
         for frame_track in frame_tracks:
             if frame_track.get_last_frame_id() == i:
                 detection = frame_track.get_last_detection()
@@ -165,7 +168,8 @@ if __name__ == "__main__":
                 img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
 
-                bb_color_displaced = (255, 0, 0)
+            if i>0:
+                bb_color_displaced = (0, 255, 255)
                 displacement_x, displacement_y = detection.of_direction
                 x_min, y_min, x_max, y_max = bb
                 x_min += displacement_x 
@@ -174,7 +178,7 @@ if __name__ == "__main__":
                 y_max += displacement_y
                 mins = int(x_min), int(y_min)
                 maxs = int(x_max), int(y_max)
-                img = cv2.rectangle(img, mins, maxs, bb_color_displaced, bb_thickness)
+                img_past = cv2.rectangle(img_past, mins, maxs, bb_color_displaced, bb_thickness)
                 
                 # Draw a smaller rectangle for ID label
                 id_label = f"ID: {frame_track.get_track_id()}"
@@ -185,33 +189,21 @@ if __name__ == "__main__":
                 # Place the label at the top-left corner inside the bounding box
                 label_position = (x_min, y_min - 10)
                 label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
-                img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color_displaced, -1)  # -1 for filled rectangle
-                img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-
+                img_past = cv2.rectangle(img_past, (int(x_min), int(y_min) - 5), label_bg_end, bb_color_displaced, -1)  # -1 for filled rectangle
+                img_past = cv2.putText(img_past, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
                 
         out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
         cv2.imwrite(out_path, img)
-    
-    save_pickle_path = "/ghome/group07/test/W3/task_1_3/fill_tracks/"
-    with open(save_pickle_path+"full_norm_and_moved.pkl", 'wb') as outp:
-        pickle.dump(track_updater, outp)
-    
+
+        if i>0:
+            out_path_past = os.path.join(out_img_path, "frame_"+str(i-1)+".png")
+            cv2.imwrite(out_path_past, img_past)
 
 
-
-            
-
-
-
-
-
-
-
-
-
-
+        #save_pickle_path = task_configs["save_pickle_path"]
+        #with open(save_pickle_path, 'wb') as outp:
+        #    pickle.dump(track_updater, outp)
     
 
-
+                

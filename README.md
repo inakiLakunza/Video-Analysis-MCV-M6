@@ -57,3 +57,17 @@ Our annotated sequence can be found at [/W2/part1/task_1_2/annotations.xml](http
 
 ##### CVPR 2021 AI City Challenge
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_3/results_and_gt/example_gif.gif" width="400" height="auto">
+
+## Week 3: Optical Flow
+On this week the main goal has been to estimate the optical flow of a video sequence and try to improve an object tracking algorithm using the optical flow.
+
+- Task 1: Optical Flow.
+    - Estimate the Optical Flow with block matching.
+    - Estimate the Optical Flow with off-the-shelf method.
+    - Improve the object tracking algorithm with Optical Flow.
+- Task 2: Multi-Target Single-Camera tracking (MTSC).
+    - Evaluate our best tracking algorithm in different SEQs of AI City Challenge.
+    - Evaluate the tracking using IDF1 and HOTA scores.
+
+#### Some example results
+

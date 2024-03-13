@@ -25,11 +25,11 @@ with open("results/metric_results.json", "r") as file:
     
 results_random_search["estimators"] = []
 
-range_block_size = range(1,51, 5)
-range_search_max_dist =  range(0,30, 2)
-estimators = ["mse", "mae", "ccorr", "ccoeff"]
+range_block_size = range(30,75, 5)
+range_search_max_dist =  range(20,40, 2)
+estimators = ["ccorr", "ccoeff"]
 
-max_iterations = 25
+max_iterations = 1
 current_iterations = 0
 
 
@@ -50,20 +50,20 @@ cv2.imwrite("results" + "/image3.png", image_gt)
     
 
 while  (current_iterations <  max_iterations):
-    block_size = random.sample(range_block_size, 1)[0]
-    search_max_dist = random.sample(range_search_max_dist, 1)[0]
-    matcher = random.sample(estimators, 1)[0]
+    block_size = 35#random.sample(range_block_size, 1)[0]
+    search_max_dist = 38#random.sample(range_search_max_dist, 1)[0]
+    matcher = "ccorr"#random.sample(estimators, 1)[0]
     output_dir = f"results/bs_{block_size}_sm_{search_max_dist}"
     print(f"Starting the evaluation with BS:{block_size}, MS:{search_max_dist} and matcher:{matcher}")
 
     of = Flow_Field_Block_Matching(block_size=block_size, search_max_dist=search_max_dist,
                                   ref_img=image_ref, comp_img=image_target,
-                                  output_dir=f"results/bs_{block_size}_sm_{search_max_dist}", matcher=matcher)
+                                  output_dir=f"results/bs_{block_size}_sm_{search_max_dist}_{matcher}", matcher=matcher)
     
     #try:
     start_time = time.time()
     of.estimate_of(visualization=False)
-    postprocessed_of = of.postprocess(optical_flow_image=of.flow_field)
+    postprocessed_of = of.postprocess(optical_flow_image=of.flow_field, color_diff_thr=3)
     finish_time = time.time()    
     
     results_random_search["block_size"].append(block_size)
@@ -72,18 +72,20 @@ while  (current_iterations <  max_iterations):
     
     error_msne, error_sen = utils.OF_MSEN(GT=image_gt, pred=postprocessed_of, output_dir=f"results/bs_{block_size}_sm_{search_max_dist}", visualize=True) 
     error_pepn = utils.calculate_pepn(gt_flow=image_gt, pred_flow=postprocessed_of)
+    print(error_msne)
+    print(error_pepn)
 
     results_random_search["msne"].append(error_msne)
     results_random_search["pepn"].append(error_pepn)
     results_random_search["estimators"].append(matcher)
     
     
-    #visu.visualize_flowvis(flow=postprocessed_of, filepath=output_dir+"/flowvis.png")
-    #visu.plot_optical_flow_hsv(flow=postprocessed_of[:,:,:2], labelled=postprocessed_of[:,:,2], output_dir=output_dir)
-    #visu.plot_optical_flow_quiver(postprocessed_of, image_ref, output_dir=output_dir)
-    #visu.plot_optical_flow_quiver(postprocessed_of, image_ref, flow_with_camera=True, output_dir=output_dir)
-    #visu.plot_optical_flow_surface(postprocessed_of, image_ref, output_dir=output_dir)
-    
+    visu.visualize_flowvis(flow=postprocessed_of, filepath=output_dir+"/flowvis.png")
+    visu.plot_optical_flow_hsv(flow=postprocessed_of[:,:,:2], labelled=postprocessed_of[:,:,2], output_dir=output_dir)
+    visu.plot_optical_flow_quiver(postprocessed_of, image_ref, output_dir=output_dir)
+    visu.plot_optical_flow_quiver(postprocessed_of, image_ref, flow_with_camera=True, output_dir=output_dir)
+    visu.plot_optical_flow_surface(postprocessed_of, image_ref, output_dir=output_dir)
+    exit()
     current_iterations +=1
         
     #except Exception as e:
@@ -93,8 +95,8 @@ while  (current_iterations <  max_iterations):
     
     
 import os
-os.remove("results/metric_results.json")
-with open("results/metric_results.json", "w") as file:
-    json.dump(results_random_search, file)   
+#os.remove("results/metric_results.json")
+#with open("results/metric_results.json", "w") as file:
+#    json.dump(results_random_search, file)   
         
     

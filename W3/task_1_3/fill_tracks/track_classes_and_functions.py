@@ -7,6 +7,9 @@ from utils import *
 import numpy as np
 import time
 from RAFT import main as raft_query
+from tqdm import tqdm
+import pandas as pd
+import csv
 
 import copy
 
@@ -268,20 +271,77 @@ class Tracks_2_1():
 
 
 
+    def add_missing_track_to_csv(self, csv_path, out_csv_path, frame_id, track_id, x_min, y_min, x_max, y_max, score, written=False):
 
-    def fill_missing_tracks(self):
+        # REMEMBER THAT THE GT AND THE CSV IS DONE WITH BASE 1,
+        # SO WE HAVE TO FIND THE NEXT FRAME NUMBER
+        displaced_frame_id = frame_id+1
+
+        if not written:
+            with open(csv_path, newline='') as csvfile:
+                reader = csv.reader(csvfile)
+                rows = list(reader)
+            
+        else: 
+            with open(out_csv_path, newline='') as csvfile:
+                reader = csv.reader(csvfile)
+                rows = list(reader)
+
+        if os.path.exists(out_csv_path):
+            os.remove(out_csv_path)
+
+        width = x_max-x_min
+        height = y_max-y_min
+
+        for i in range(len(rows)):
+             if int(rows[i][0]) == displaced_frame_id:
+                 new_list = rows[:i]
+                 
+                 new_line = rows[i].copy()
+                 new_line[1]=" "+str(int(track_id)+1)
+                 new_line[2]=" "+str(float(x_min)+1)
+                 new_line[3]=" "+str(float(y_min)+1)
+                 new_line[4]=" "+str(width)
+                 new_line[5]=" "+str(height)
+                 new_line[6]=" "+str(score)
+
+                 new_list.append(new_line)
+                 new_list.extend(rows[i:])
+
+                 print(f"\nInserted new line in csv file, the line is the following:\n")
+                 print(new_line)
+                 print("\n")
+                 break
+            
+        with open(out_csv_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerows(new_list)
+
+
+    def scale_diff(self, i_diff):
+        if i_diff < 5: return i_diff
+        elif i_diff < 10: return 7.5
+        elif i_diff < 15: return 10
+        elif i_diff < 30: return 15
+        elif i_diff < 60: return 20
+        else: return 25
+
+    def fill_missing_tracks(self, original_csv_path, out_csv_path, max_hole=10, updated_imgs_path="/ghome/group07/test/W3/task_1_3/fill_tracks/updated_frames"):
 
         img_folder = "/ghome/group07/test/W3/task_1_3/bbs_normal_and_rect"        
-        updated_folder = "/ghome/group07/test/W3/task_1_3/fill_tracks/updated_frames"
+        updated_folder = updated_imgs_path
         bb_color = (0, 255, 0)
 
         updated_frames = []
         copied_frames = []
 
+        written = False
+
         if len(self.active_tracks) > 0:
             self.ended_tracks.extend(self.active_tracks)
 
-        for track in self.ended_tracks:
+
+        for track in tqdm(self.ended_tracks):
 
             last_frame = track.frames[0]
             actual_frame = track.frames[0]
@@ -291,12 +351,14 @@ class Tracks_2_1():
                 actual_frame = track.frames[i]
 
                 diff = actual_frame-last_frame
-                if diff>1 and diff<4:
+                if diff>1 and diff<max_hole:
+
                     track_id = track.id
                     last_detection = track.detections[i_last_frame]
                     last_det_of_dir = last_detection.of_direction
                     disp_x = last_det_of_dir[1]
                     disp_y = last_det_of_dir[0]
+                    score = last_detection.get_score()
 
                     for i_diff in range(1, diff):
                         frame_to_mod_id = last_frame+i_diff
@@ -306,10 +368,25 @@ class Tracks_2_1():
                         x_max = bb_to_move[2]
                         y_max = bb_to_move[3]
 
-                        x_min_disp = x_min+disp_x*i_diff
-                        x_max_disp = x_max+disp_x*i_diff
-                        y_min_disp = y_min+disp_y*i_diff
-                        y_max_disp = y_max+disp_y*i_diff
+                        
+
+                        if abs(disp_x) < 0.005 and abs(disp_y) < 0.005:
+                            x_min_disp = x_min
+                            y_min_disp = y_min
+                            x_max_disp = x_max
+                            y_max_disp = y_max
+
+                        else:
+                            scaling = self.scale_diff(i_diff)
+                            x_min_disp = x_min+disp_x*scaling
+                            x_max_disp = x_max+disp_x*scaling
+                            y_min_disp = y_min+disp_y*scaling
+                            y_max_disp = y_max+disp_y*scaling
+
+
+                        self.add_missing_track_to_csv(original_csv_path, out_csv_path, frame_to_mod_id, track_id, x_min, y_min, x_max, y_max, score, written=written)
+                        written=True
+
 
                         if frame_to_mod_id in updated_frames:
                             loaded_img_path = os.path.join(updated_folder, "frame_"+str(frame_to_mod_id)+".png")
@@ -342,7 +419,7 @@ class Tracks_2_1():
                         updated_frames.append(frame_to_mod_id)
 
                 else:
-                    if actual_frame not in updated_frames and actual_frame not in copied:
+                    if actual_frame not in updated_frames and actual_frame not in copied_frames:
                         loaded_img_path = os.path.join(img_folder, "frame_"+str(actual_frame)+".png")
                         img = cv2.imread(loaded_img_path)
                         img_copy = copy.deepcopy(img)

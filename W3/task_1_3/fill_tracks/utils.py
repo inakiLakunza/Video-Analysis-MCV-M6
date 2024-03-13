@@ -9,6 +9,7 @@ import random
 import os
 
 
+
 # HABRÁ QUE PONER TMB MEDIAN Y MEAN
 def flow_votation(box_flow):
     #print(box_flow)
@@ -102,7 +103,7 @@ def split_frames(frames):
     return frames[:split], frames[split:]
 
 
-def make_video(out_folder="./", img_folder=None, name="example_video", start=800, end=1000):
+def make_video(out_folder="./", img_folder=None, name="example_video", start=0, end=2140):
     """
     Make a .mp4 from the estimation
     https://stackoverflow.com/questions/62880911/generate-video-from-numpy-arrays-with-opencv

@@ -222,7 +222,7 @@ class Tracks_2_1():
 
 
 
-    def update_tracks(self, new_detections, frame_id):
+    def update_tracks(self, new_detections, frame_id, moved=True):
 
         # OPTICAL FLOW WITH PREVIOUS FRAME
         flow = self.compute_OF_present_future(frame_id)
@@ -250,8 +250,8 @@ class Tracks_2_1():
             for i in range(self.n_active_tracks):
                 last_dect, last_frame = self.active_tracks[i].get_last_detection_and_frame_id()
 
-                #iou = last_dect.compute_iou(detection)
-                iou = detection.compute_moved_iou(last_dect, frame_id)
+                if moved: iou = detection.compute_moved_iou(last_dect, frame_id)
+                else: iou = last_dect.compute_iou(detection)
 
                 #print("iou s:       ", iou, best_iou)
                 if iou >= self.min_iou and iou>best_iou:
@@ -307,7 +307,8 @@ def nms(detections, conf_threshold, iou_threshold):
     return detection_list_new
 
 
-
+# TAKEN FROM:
+# https://github.com/amusi/Non-Maximum-Suppression/blob/master/nms.py
 def nms_otaku(detections, threshold):
     
     bounding_boxes = []

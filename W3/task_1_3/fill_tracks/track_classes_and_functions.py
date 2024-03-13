@@ -326,9 +326,9 @@ class Tracks_2_1():
         elif i_diff < 60: return 20
         else: return 25
 
-    def fill_missing_tracks(self, original_csv_path, out_csv_path, max_hole=10, updated_imgs_path="/ghome/group07/test/W3/task_1_3/fill_tracks/updated_frames"):
+    def fill_missing_tracks(self, original_csv_path, out_csv_path, original_img_path, max_hole=10, updated_imgs_path="/ghome/group07/test/W3/task_1_3/fill_tracks/updated_frames"):
 
-        img_folder = "/ghome/group07/test/W3/task_1_3/bbs_normal_and_rect"        
+        img_folder = original_img_path        
         updated_folder = updated_imgs_path
         bb_color = (0, 255, 0)
 

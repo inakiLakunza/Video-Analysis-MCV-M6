@@ -70,4 +70,10 @@ On this week the main goal has been to estimate the optical flow of a video sequ
     - Evaluate the tracking using IDF1 and HOTA scores.
 
 #### Some example results
+
+##### Task 1.3
+<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W3/task_1_3/gifs_and_imgs/normal_and_rect_530_650.gif" width="400" height="auto">
+
+
+##### Task 2
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W3/task_2/gif_read_me.gif" width="400" height="auto">

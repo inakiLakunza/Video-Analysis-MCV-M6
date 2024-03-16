@@ -25,42 +25,51 @@ def compute_raft(im1_path: str, im2_path: str):
 
 
 class Track():
-    def __init__(self, track_updater, first_detection, first_frame_id):
-        self.id = track_updater.n_total_tracks
-        self.color = list(np.random.choice(range(256), size=3))
-        self.first_detection = first_detection
-        self.detections = [first_detection]
-        self.frames = [first_frame_id]
+    def __init__(self, track_updater: 'Track_Updater', first_detection: 'Detection', first_frame_id: int):
+        self.id: int = track_updater.n_total_tracks
+        self.color: tuple[int] = list(np.random.choice(range(256), size=3))
+        self.first_detection: 'Detection' = first_detection
+        self.detections: list['Detection'] = [first_detection]
+        self.frames: list[int] = [first_frame_id]
 
-    def add_detection_and_frame_id(self, detection, frame_id):
+        self.of_directions: list[tuple[float]] = [first_detection.get]
+
+    def add_detection_and_frame_id(self, detection: 'Detection', frame_id: int) -> None:
         self.detections.append(detection)
         self.frames.append(frame_id)
+        self.of_directions.append(detection.get_of_direction())
 
-    def get_last_detection_and_frame_id(self):
+    def get_last_detection_and_frame_id(self) -> tuple['Detection', int]:
         return self.detections[-1], self.frames[-1]
 
-    def get_last_detection(self):
+    def get_last_detection(self) -> 'Detection':
         return self.detections[-1]
     
-    def get_last_frame_id(self):
+    def get_last_frame_id(self) -> int:
         return self.frames[-1]
     
-    def get_detections(self):
+    def get_detections(self) -> list['Detection']:
         return self.detections
     
-    def get_frames(self):
+    def get_frames(self) -> list[int]:
         return self.frames
 
-    def get_color(self):
+    def get_color(self) -> tuple[int]:
         return (int(self.color[0]), int(self.color[1]), int(self.color[2]))
 
-    def get_track_id(self):
+    def get_track_id(self) -> int:
         return self.id
+
+    def get_of_directions(self) -> list[tuple[float]]:
+        return self.of_directions
+
+
+
 
     
 
 class Detection():
-    def __init__(self, frame_id, bb, score, tensor=True):
+    def __init__(self, frame_id: int, bb: list[float], score: float, tensor: bool = True):
         self.frame_id = frame_id
 
         if tensor:
@@ -75,22 +84,31 @@ class Detection():
         self.box_x_max = self.bb[2]
         self.box_y_max = self.bb[3]
 
-        
+        centroid_x = (self.box_x_min + self.box_x_max) / 2
+        centroid_y = (self.box_y_min + self.box_y_max) / 2
+
+        self.centroid = (centroid_x, centroid_y)
 
         # WE INITIALIZE IT WITH 0, AND COMPUTE IT LATER
         self.of_direction = None
 
 
-    def get_bb(self):
+    def get_bb(self) -> list[int]:
         return self.bb
 
-    def get_box_values(self):
+    def get_box_values(self) -> tuple[float]:
         return self.box_x_min, self.box_y_min, self.box_x_max, self.box_y_max
     
-    def get_score(self):
+    def get_score(self) -> float:
         return self.score
+    
+    def get_centroid(self) -> tuple[float]:
+        return self.centroid
+    
+    def get_of_direction(self) -> tuple[float]:
+        return self.of_direction
 
-    def compute_iou(self, other):
+    def compute_iou(self, other) -> float:
          # Get the coordinates of the intersection rectangle
         x_left = max(self.box_x_min, other.box_x_min)
         y_top = max(self.box_y_min, other.box_y_min)
@@ -113,7 +131,7 @@ class Detection():
         return iou
     
 
-    def compute_moved_iou(self, detection_to_move, frame_id):
+    def compute_moved_iou(self, detection_to_move, frame_id) -> float:
 
         scale = frame_id-detection_to_move.frame_id
         if scale >= 5:
@@ -122,9 +140,7 @@ class Detection():
         movement_x = detection_to_move.of_direction[0]*scale
         movement_y = detection_to_move.of_direction[1]*scale
 
-        print("movements (x,y): ", movement_x, movement_y)
-
-         # Get the coordinates of the intersection rectangle
+        # Get the coordinates of the intersection rectangle
         x_left = max(self.box_x_min, detection_to_move.box_x_min+movement_x)
         y_top = max(self.box_y_min, detection_to_move.box_y_min+movement_y)
         x_right = min(self.box_x_max, detection_to_move.box_x_max+movement_x)
@@ -145,6 +161,51 @@ class Detection():
 
         return iou
     
+
+
+class Movement_Forward():
+
+    def __init__(self, track: Track, frame_id: int, detection: Detection):
+        self.track: Track = track
+        self.detection: Detection = detection
+        self.color: tuple[int] = track.get_color()
+        self.frame_id: int = frame_id
+
+        self.track_frame_ids = track.get_frames()
+        self.track_of_list = track.get_of_directions()
+
+    def get_track(self) -> Track:
+        return self.track
+    
+    def get_detection(self) -> Detection:
+        return self.detection
+    
+    def get_color(self) -> tuple[int]:
+        return self.color
+    
+    def get_frame_id(self) -> int:
+        return self.frame_id
+
+    
+    def compute_movement_forward(self) -> 'Movement_Forward':
+        
+        reversed_frame_ids = self.track_frame_ids.copy()
+        reversed_frame_ids.reverse()
+
+        reversed_track_of_list = self.track_of_list.copy()
+        reversed_track_of_list.reverse()
+
+        
+        
+
+
+
+
+
+
+
+
+
 
 class Track_Updater():
     def __init__(self, min_iou, max_no_detect):
@@ -295,7 +356,6 @@ def nms(detections, conf_threshold, iou_threshold):
     # Stage1: Sort boxes and filter out boxes with low confidence
     detections_sorted  = sorted(detections, reverse=True, key = lambda x : x.score)
     for detection in detections_sorted:
-        print(detection.score, conf_threshold)
         if detection.score > conf_threshold:
             detection_list_thresholded.append(detection)
     

@@ -54,12 +54,14 @@ def print_and_get_resume() -> dict:
     print(f"SEQUENCE_ROOT_PATH: {SEQUENCE_ROOT_PATH}")
     print(f"SEQUENCE_NUMBER: {SEQUENCE_NUMBER}")
     #print(f"OUT_CSV_ROOT_PATH: {OUT_CSV_ROOT_PATH}")
-    #print(f"WRITE_CSV: {WRITE_CSV}")
+    print(f"WRITE_CSV: {WRITE_CSV}")
+    print(f"WRITE_PKL: {WRITE_PKL}")
+    print(f"WRITE_IMGS: {WRITE_IMGS}")
     #print(f"OUT_IMG_ROOT_PATH: {OUT_IMG_ROOT_PATH}")
     #print(f"OUT_IMG_PATH: {OUT_IMG_FOLDER}")
     #print(f"OUT_PICKLE_ROOT_PATH: {OUT_PICKLE_ROOT_PATH}")
     #print(f"OUT_PICKLE_PATH: {OUT_PICKLE_PATH}")
-    #print(f"WRITE_PKL: {WRITE_PKL}")
+    
 
     # Create and return dictionary
     resume_dict = {
@@ -72,12 +74,14 @@ def print_and_get_resume() -> dict:
         "SEQUENCE_ROOT_PATH": SEQUENCE_ROOT_PATH,
         "SEQUENCE_NUMBER": SEQUENCE_NUMBER,
         #"OUT_CSV_ROOT_PATH": OUT_CSV_ROOT_PATH,
-        #"WRITE_CSV": WRITE_CSV,
+        "WRITE_CSV": WRITE_CSV,
+        "WRITE_PKL": WRITE_PKL,
+        "WRITE_IMGS": WRITE_IMGS
         #"OUT_IMG_ROOT_PATH": OUT_IMG_ROOT_PATH,
         #"OUT_IMG_FOLDER": OUT_IMG_FOLDER,
         #"OUT_PICKLE_ROOT_PATH": OUT_PICKLE_ROOT_PATH,
         #"OUT_PICKLE_PATH": OUT_PICKLE_PATH,
-        #"WRITE_PKL": WRITE_PKL
+        
     }
     return resume_dict
 
@@ -88,10 +92,11 @@ def track_update_loop(track_updater: Track_Updater, predictor: DefaultPredictor,
     
     for i in tqdm(range(n_frames)):
 
-        img_path = os.path.join(img_path, str(i)+".png")
-        img = cv2.imread(img_path)
-        img_copy = copy.deepcopy(img)
-        preds = predictor(img_copy)
+        i_path = os.path.join(img_path, str(i)+".png")
+        print(i_path)
+        img = cv2.imread(i_path)
+        img = copy.deepcopy(img)
+        preds = predictor(img)
 
         # Keep only car predictions
         car_mask = preds["instances"].pred_classes == NAME_TO_CLASS["car"]
@@ -160,11 +165,11 @@ def track_update_loop(track_updater: Track_Updater, predictor: DefaultPredictor,
 
                     # Place the label at the top-left corner inside the bounding box
                     label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
-                    img_copy = cv2.rectangle(img_copy, (int(x_min), int(y_min) - 5), label_bg_end, bb_color_normal, -1)  # -1 for filled rectangle
-                    img_copy = cv2.putText(img_copy, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                    img = cv2.rectangle(img, (int(x_min), int(y_min) - 5), label_bg_end, bb_color_normal, -1)  # -1 for filled rectangle
+                    img = cv2.putText(img, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             
             out_path = os.path.join(OUT_IMG_FOLDER, "frame_"+str(i)+".png")
-            cv2.imwrite(out_path, img_copy)
+            cv2.imwrite(out_path, img)
 
 
     return track_updater
@@ -230,11 +235,9 @@ if __name__ == "__main__":
     error_msg_seq_number: str = f"The chosen sequence number is not correct, it must be 1, 3 or 4, and you inserted {SEQUENCE_NUMBER}"
     assert SEQUENCE_NUMBER in [1, 3, 4], error_msg_seq_number
 
-    
-    
-    
     WRITE_PKL: bool = configs["write_pkl"]
-    
+    WRITE_CSV: bool = configs["write_csv"]
+    WRITE_IMGS: bool = configs["write_imgs"]
 
 
     resume_dict: dict = print_and_get_resume()
@@ -248,7 +251,7 @@ if __name__ == "__main__":
 
         cam_name = video_path.split("/")[0]
 
-        WRITE_CSV: bool = configs["write_csv"]
+        
         if WRITE_CSV: 
             OUT_CSV_ROOT_PATH: str = configs["out_csv_root_path"]
             OUT_CSV_PATH: Path = os.path.join(OUT_CSV_ROOT_PATH, str(SEQUENCE_NUMBER), cam_name)
@@ -256,10 +259,10 @@ if __name__ == "__main__":
             OUT_CSV_PATH: Path = os.path.join(OUT_CSV_PATH, TRY_NAME+".csv")
             delete_csv_if_exists(OUT_CSV_PATH)
 
-        WRITE_IMGS: bool = configs["write_imgs"]
+        
         if WRITE_IMGS:
             OUT_IMG_ROOT_PATH: str = configs["out_img_root_path"]
-            OUT_IMG_FOLDER: Path = os.path.join(OUT_IMG_ROOT_PATH, str(SEQUENCE_NUMBER), cam_name, TRY_NAME)
+            OUT_IMG_FOLDER: Path = os.path.join(OUT_IMG_ROOT_PATH, "S0"+str(SEQUENCE_NUMBER), cam_name, TRY_NAME)
             create_folder_if_not_exist(OUT_IMG_FOLDER)
 
 

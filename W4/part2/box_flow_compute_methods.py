@@ -11,15 +11,11 @@ import os
 
 # HABRÁ QUE PONER TMB MEDIAN Y MEAN
 def flow_votation(box_flow):
-    #print(box_flow)
     # Reshape the flow array to 2D (height*width, 2) for counting
     flow_reshaped = box_flow.reshape(-1, 2)
-    #print(flow_reshaped)
 
     # Count the occurrences of each unique flow vector
     flow_counts = Counter(map(tuple, flow_reshaped))
-
-    #print(flow_counts)
 
     # Get the most frequent flow vector
     most_common_flow = flow_counts.most_common(1)[0][0]

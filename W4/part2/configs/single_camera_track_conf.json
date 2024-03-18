@@ -1,0 +1,26 @@
+{
+
+    "try_name": "th02_mskip10_iou05",
+    "fine_tuned": false,
+
+
+    "detection_threshold": 0.2,
+    "min_iou": 0.5,
+    "max_frames_skip": 10,
+    
+    "bb_thickness": 3,
+    "out_img_root_path": "./out_imgs/",
+    "write_imgs": true,
+
+    "out_pickle_root_path": "./out_pickles/",
+    "write_pkl": true,
+
+    "out_csv_root_path": "./out_csv/", 
+    "write_csv": true,
+
+    "sequence_root_path": "./../../frame_dataset_PNG/",
+    "sequence_number": 3,
+
+    "save_results_info_path": "./results_info/"
+
+}

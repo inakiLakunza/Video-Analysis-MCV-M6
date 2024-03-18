@@ -1,0 +1,127 @@
+ The dataset contains
+more than 200K annotated bounding boxes covering a wide
+range of scenes, viewing angles, vehicle models, and urban
+traffic flow conditions. Camera geometry and calibration information
+are provided to aid spatio-temporal analysis. In addition, a subset
+of the benchmark is made available for the task of image-based
+vehicle re-identification (ReID).
+
+
+1) Detection and tracking of targets within a single camera,
+known as multi-target singlecamera (MTSC) tracking;
+2) Re-identification of targets across multiple cameras,
+known as ReID; 
+and 3) Detection and tracking of targets across a network of cameras,
+known as multi-target multi-camera (MTMC) tracking
+
+
+The two main challenges in vehicle
+ReID are small inter-class variability and large intra-class
+variability, i.e., the variety of shapes from different viewing
+angles is often greater than the similarity of car models
+produced by various manufacturers.
+
+
+In order to preserve the privacy of drivers, captured license plate
+information—which otherwise would be extremely useful
+for vehicle ReID—should not be used
+
+Over 200K bounding boxes were carefully labeled, 
+and the homography matrices that relate pixel
+locations to GPS coordinates are available to enable precise
+spatial localization. 
+
+The dataset is divided into 5 scenarios, summarized in
+Tab. 2. In total, there are 229,680 bounding boxes of 666
+vehicle identities annotated, where each passes through at
+least 2 cameras. The distribution of vehicle types and colors
+in CityFlow is displayed Fig. 3. The resolution of
+each video is at least 960p and the majority of the videos
+have a frame rate of 10 FPS.
+
+
+In each scenario, the offset of starting time for each
+video is available, which can be used for synchronization.
+
+
+Cameras at the same intersection sometimes share overlapping
+field of views (FOVs) and some cameras use fisheye lens, 
+leading to strong radial distortion of their captured footage.
+Besides, because of the relatively fast vehicle
+speed, motion blur may lead to failures in object detection
+and data association. Fig. 4 shows an example of our
+annotations in the benchmark.
+
+
+The camera geometry of each scenario is available with
+the dataset. We also provide the camera homography matrices
+between the 2D image plane and the ground plane
+defined by GPS coordinates based on the flat-earth approximation. 
+The demonstration of camera calibration is shown
+in Fig. 5, which estimates the homography matrix based on
+the correspondence between a set of 3D points and their
+2D pixel locations.
+
+
+A sampled subset from CityFlow, noted as CityFlowReID,
+is dedicated for the task of image-based ReID.
+CityFlow-ReID contains 56,277 bounding boxes in total,
+where 36,935 of them from 333 object identities form the
+training set, and the test set consists of 18,290 bounding
+boxes from the other 333 identities. The rest of the 1,052
+images are the queries. On average, each vehicle has 84.50
+image signatures from 4.55 camera views.
+
+
+For the evaluation of MTMC tracking, we adopted
+the metrics used by the MOTChallenge [5, 24] and
+DukeMTMC [34] benchmarks.
+
+
+Single-camera tracking and object detection
+Most state-of-the-art MTSC tracking methods follow the
+tracking-by-detection paradigm. In our experiments, we
+first generate detected bounding boxes using well-known
+methods such as YOLOv3 [32], SSD512 [27] and Faster
+R-CNN [33]. For all detectors, we use default models 
+pretrained on the COCO benchmark [25], where !!!!the classes of
+interest include car, truck and bus. We also use the same
+threshold for detection scores across all methods (0.2)!!!!
+
+
+Offline methods in MTSC tracking usually lead to better
+performance, as all the aggregated tracklets can be used
+for data association. Online approaches often leverage 
+robust appearance features to compensate for not having 
+information about the future. We experimented with both
+types of methods in CityFlow, which are introduced as follows. 
+DeepSORT [49] is an online method that combines
+deep learning features with Kalman-filter-based tracking
+and the Hungarian algorithm for data association, achieving 
+remarkable performance on the MOTChallenge MOT16
+benchmark [30].
+
+
+Reliable cross-camera tracking is built upon accurate
+tracking within each camera (MTSC). Note that false positives
+are not taken into account in MTSC tracking evaluation, 
+because only vehicles that travel across more than one 
+camera are annotated. With regards to object detectors, 
+SSD512 [27] performs the best, whereas YOLOv3 [32] and 
+Faster R-CNN [33] show similar performance.
+
+
+As for MTSC trackers, TC [43], the
+only offline method, performs better according to most of
+the evaluation metrics. DeepSORT [49] and MOANA [42]
+share similar performance in MOTA, but the ID F1 scores
+of DeepSORT are much higher. Nonetheless, MOANA is
+capable of tracking most trajectories successfully.
+
+
+MTMC tracking is a joint process of visual-spatiotemporal
+reasoning. For these experiments, we first apply
+MTSC tracking, then sample a number of signatures from
+each trajectory in order to extract and compare appearance
+features. The number of sampled instances from each vehicle
+is empirically chosen as 3.

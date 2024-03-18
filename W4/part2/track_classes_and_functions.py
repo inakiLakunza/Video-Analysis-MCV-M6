@@ -3,15 +3,11 @@ import sys
 sys.path.insert(0, '/ghome/group07/test/W3/task_1_2')
 
 from utils import *
+from box_flow_compute_methods import *
 
 import numpy as np
 import time
 from RAFT import main as raft_query
-from tqdm import tqdm
-import pandas as pd
-import csv
-
-import copy
 
 
 
@@ -29,42 +25,51 @@ def compute_raft(im1_path: str, im2_path: str):
 
 
 class Track():
-    def __init__(self, track_updater, first_detection, first_frame_id):
-        self.id = track_updater.n_total_tracks
-        self.color = list(np.random.choice(range(256), size=3))
-        self.first_detection = first_detection
-        self.detections = [first_detection]
-        self.frames = [first_frame_id]
+    def __init__(self, track_updater: 'Track_Updater', first_detection: 'Detection', first_frame_id: int):
+        self.id: int = track_updater.n_total_tracks
+        self.color: tuple[int] = list(np.random.choice(range(256), size=3))
+        self.first_detection: 'Detection' = first_detection
+        self.detections: list['Detection'] = [first_detection]
+        self.frames: list[int] = [first_frame_id]
 
-    def add_detection_and_frame_id(self, detection, frame_id):
+        self.of_directions: list[tuple[float]] = [first_detection.get]
+
+    def add_detection_and_frame_id(self, detection: 'Detection', frame_id: int) -> None:
         self.detections.append(detection)
         self.frames.append(frame_id)
+        self.of_directions.append(detection.get_of_direction())
 
-    def get_last_detection_and_frame_id(self):
+    def get_last_detection_and_frame_id(self) -> tuple['Detection', int]:
         return self.detections[-1], self.frames[-1]
 
-    def get_last_detection(self):
+    def get_last_detection(self) -> 'Detection':
         return self.detections[-1]
     
-    def get_last_frame_id(self):
+    def get_last_frame_id(self) -> int:
         return self.frames[-1]
     
-    def get_detections(self):
+    def get_detections(self) -> list['Detection']:
         return self.detections
     
-    def get_frames(self):
+    def get_frames(self) -> list[int]:
         return self.frames
 
-    def get_color(self):
+    def get_color(self) -> tuple[int]:
         return (int(self.color[0]), int(self.color[1]), int(self.color[2]))
 
-    def get_track_id(self):
+    def get_track_id(self) -> int:
         return self.id
+
+    def get_of_directions(self) -> list[tuple[float]]:
+        return self.of_directions
+
+
+
 
     
 
 class Detection():
-    def __init__(self, frame_id, bb, score, tensor=True):
+    def __init__(self, frame_id: int, bb: list[float], score: float, tensor: bool = True):
         self.frame_id = frame_id
 
         if tensor:
@@ -79,22 +84,31 @@ class Detection():
         self.box_x_max = self.bb[2]
         self.box_y_max = self.bb[3]
 
-        
+        centroid_x = (self.box_x_min + self.box_x_max) / 2
+        centroid_y = (self.box_y_min + self.box_y_max) / 2
+
+        self.centroid = (centroid_x, centroid_y)
 
         # WE INITIALIZE IT WITH 0, AND COMPUTE IT LATER
         self.of_direction = None
 
 
-    def get_bb(self):
+    def get_bb(self) -> list[int]:
         return self.bb
 
-    def get_box_values(self):
+    def get_box_values(self) -> tuple[float]:
         return self.box_x_min, self.box_y_min, self.box_x_max, self.box_y_max
     
-    def get_score(self):
+    def get_score(self) -> float:
         return self.score
+    
+    def get_centroid(self) -> tuple[float]:
+        return self.centroid
+    
+    def get_of_direction(self) -> tuple[float]:
+        return self.of_direction
 
-    def compute_iou(self, other):
+    def compute_iou(self, other) -> float:
          # Get the coordinates of the intersection rectangle
         x_left = max(self.box_x_min, other.box_x_min)
         y_top = max(self.box_y_min, other.box_y_min)
@@ -117,7 +131,7 @@ class Detection():
         return iou
     
 
-    def compute_moved_iou(self, detection_to_move, frame_id):
+    def compute_moved_iou(self, detection_to_move, frame_id) -> float:
 
         scale = frame_id-detection_to_move.frame_id
         if scale >= 5:
@@ -126,9 +140,7 @@ class Detection():
         movement_x = detection_to_move.of_direction[0]*scale
         movement_y = detection_to_move.of_direction[1]*scale
 
-        print("movements (x,y): ", movement_x, movement_y)
-
-         # Get the coordinates of the intersection rectangle
+        # Get the coordinates of the intersection rectangle
         x_left = max(self.box_x_min, detection_to_move.box_x_min+movement_x)
         y_top = max(self.box_y_min, detection_to_move.box_y_min+movement_y)
         x_right = min(self.box_x_max, detection_to_move.box_x_max+movement_x)
@@ -150,7 +162,52 @@ class Detection():
         return iou
     
 
-class Tracks_2_1():
+
+class Movement_Forward():
+
+    def __init__(self, track: Track, frame_id: int, detection: Detection):
+        self.track: Track = track
+        self.detection: Detection = detection
+        self.color: tuple[int] = track.get_color()
+        self.frame_id: int = frame_id
+
+        self.track_frame_ids = track.get_frames()
+        self.track_of_list = track.get_of_directions()
+
+    def get_track(self) -> Track:
+        return self.track
+    
+    def get_detection(self) -> Detection:
+        return self.detection
+    
+    def get_color(self) -> tuple[int]:
+        return self.color
+    
+    def get_frame_id(self) -> int:
+        return self.frame_id
+
+    
+    def compute_movement_forward(self) -> 'Movement_Forward':
+        
+        reversed_frame_ids = self.track_frame_ids.copy()
+        reversed_frame_ids.reverse()
+
+        reversed_track_of_list = self.track_of_list.copy()
+        reversed_track_of_list.reverse()
+
+        
+        
+
+
+
+
+
+
+
+
+
+
+class Track_Updater():
     def __init__(self, min_iou, max_no_detect):
         self.min_iou = min_iou
         self.max_not_detected_tracks_to_end = max_no_detect
@@ -161,8 +218,6 @@ class Tracks_2_1():
         self.total_tracks = []
         self.active_tracks = []
         self.ended_tracks = []
-
-        
 
 
     def new_track(self, frame_id, detection):
@@ -195,29 +250,49 @@ class Tracks_2_1():
         return flow
 
 
-    def assign_of_direction(self, flow, detection):
+    def assign_of_direction(self, flow, detection, method="median"):
+
+        method_to_use = method.lower()
+
+        assert method.lower() in ["median", "mean", "votation"]
 
         x_min = detection.box_x_min 
         y_min = detection.box_y_min 
         x_max = detection.box_x_max 
         y_max = detection.box_y_max
 
-        #print(y_min, y_max, x_min, x_max)
 
-        #print(flow.shape)
-        #print(flow)
         flow_within_bbox = flow[int(y_min):int(y_max), int(x_min):int(x_max), :]
-        #print(flow_within_bbox)
-        # HABRÁ QUE PONER TMB MEDIAN Y MEAN
-        bb_direction = flow_median(flow_within_bbox)
+
+        
+        if method_to_use == "median": bb_direction = flow_median(flow_within_bbox)
+        elif method_to_use == "mean": bb_direction = flow_mean(flow_within_bbox)
+        elif method_to_use == "votation": bb_direction = flow_votation(flow_within_bbox)
+
         detection.of_direction = bb_direction
-                    
+            
+
+        '''    
+            x_min_disp = x_min + bb_direction[0]
+            x_max_disp = y_min + bb_direction[0]
+            y_min_disp = x_min + bb_direction[1]
+            y_max_disp = y_min + bb_direction[1]
+            disp_bb = [x_min_disp, y_min_disp, x_max_disp, y_max_disp]
+
+            disp_det = Detection(detection.frame_id, disp_bb, detection.score)
+
+            displaced_detections.append(disp_det)
+
+        return displaced_detections
+        '''
 
 
-    def update_tracks(self, new_detections, frame_id):
+
+    def update_tracks(self, new_detections, frame_id, moved=True, method="median"):
 
         # OPTICAL FLOW WITH PREVIOUS FRAME
         flow = self.compute_OF_present_future(frame_id)
+        #print(flow.shape)
 
         live_tracks = []
         for track in self.active_tracks:
@@ -241,8 +316,8 @@ class Tracks_2_1():
             for i in range(self.n_active_tracks):
                 last_dect, last_frame = self.active_tracks[i].get_last_detection_and_frame_id()
 
-                #iou = last_dect.compute_iou(detection)
-                iou = detection.compute_moved_iou(last_dect, frame_id)
+                if moved: iou = detection.compute_moved_iou(last_dect, frame_id)
+                else: iou = last_dect.compute_iou(detection)
 
                 #print("iou s:       ", iou, best_iou)
                 if iou >= self.min_iou and iou>best_iou:
@@ -263,192 +338,14 @@ class Tracks_2_1():
             else:
                 self.assign_of_direction(flow, detection)
 
-                self.new_track(frame_id, detection)  
+                self.new_track(frame_id, detection)
+        
+        
                 
         self.n_active_tracks = len(self.active_tracks)
         print(f"Number of active tracks: f{self.n_active_tracks}  , frame number: {frame_id}")
 
-
-
-
-    def add_missing_track_to_csv(self, csv_path, out_csv_path, frame_id, track_id, x_min, y_min, x_max, y_max, score, written=False):
-
-        # REMEMBER THAT THE GT AND THE CSV IS DONE WITH BASE 1,
-        # SO WE HAVE TO FIND THE NEXT FRAME NUMBER
-        displaced_frame_id = frame_id+1
-
-        if not written:
-            with open(csv_path, newline='') as csvfile:
-                reader = csv.reader(csvfile)
-                rows = list(reader)
-            
-        else: 
-            with open(out_csv_path, newline='') as csvfile:
-                reader = csv.reader(csvfile)
-                rows = list(reader)
-
-        if os.path.exists(out_csv_path):
-            os.remove(out_csv_path)
-
-        width = x_max-x_min
-        height = y_max-y_min
-
-        for i in range(len(rows)):
-             if int(rows[i][0]) == displaced_frame_id:
-                 new_list = rows[:i]
-                 
-                 new_line = rows[i].copy()
-                 new_line[1]=" "+str(int(track_id)+1)
-                 new_line[2]=" "+str(float(x_min)+1)
-                 new_line[3]=" "+str(float(y_min)+1)
-                 new_line[4]=" "+str(width)
-                 new_line[5]=" "+str(height)
-                 new_line[6]=" "+str(score)
-
-                 new_list.append(new_line)
-                 new_list.extend(rows[i:])
-
-                 print(f"\nInserted new line in csv file, the line is the following:\n")
-                 print(new_line)
-                 print("\n")
-                 break
-            
-        with open(out_csv_path, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerows(new_list)
-
-
-    def scale_diff(self, i_diff):
-        if i_diff < 5: return i_diff
-        elif i_diff < 10: return 7.5
-        elif i_diff < 15: return 10
-        elif i_diff < 30: return 15
-        elif i_diff < 60: return 20
-        else: return 25
-
-    def fill_missing_tracks(self, original_csv_path, out_csv_path, original_img_path, max_hole=10, updated_imgs_path="/ghome/group07/test/W3/task_1_3/fill_tracks/updated_frames"):
-
-        img_folder = original_img_path        
-        updated_folder = updated_imgs_path
-        bb_color = (0, 255, 0)
-
-        updated_frames = []
-        copied_frames = []
-
-        written = False
-
-        if len(self.active_tracks) > 0:
-            self.ended_tracks.extend(self.active_tracks)
-
-
-        for track in tqdm(self.ended_tracks):
-
-            last_frame = track.frames[0]
-            actual_frame = track.frames[0]
-
-            i_last_frame = 0
-            for i in range(len(track.frames)):
-                actual_frame = track.frames[i]
-
-                diff = actual_frame-last_frame
-                if diff>1 and diff<max_hole:
-
-                    track_id = track.id
-                    last_detection = track.detections[i_last_frame]
-                    last_det_of_dir = last_detection.of_direction
-                    disp_x = last_det_of_dir[1]
-                    disp_y = last_det_of_dir[0]
-                    score = last_detection.get_score()
-
-                    for i_diff in range(1, diff):
-                        frame_to_mod_id = last_frame+i_diff
-                        bb_to_move = last_detection.bb
-                        x_min = bb_to_move[0]
-                        y_min = bb_to_move[1]
-                        x_max = bb_to_move[2]
-                        y_max = bb_to_move[3]
-
                         
-
-                        if abs(disp_x) < 0.005 and abs(disp_y) < 0.005:
-                            x_min_disp = x_min
-                            y_min_disp = y_min
-                            x_max_disp = x_max
-                            y_max_disp = y_max
-
-                        else:
-                            scaling = self.scale_diff(i_diff)
-                            x_min_disp = x_min+disp_x*scaling
-                            x_max_disp = x_max+disp_x*scaling
-                            y_min_disp = y_min+disp_y*scaling
-                            y_max_disp = y_max+disp_y*scaling
-
-
-                        self.add_missing_track_to_csv(original_csv_path, out_csv_path, frame_to_mod_id, track_id, x_min, y_min, x_max, y_max, score, written=written)
-                        written=True
-
-
-                        if frame_to_mod_id in updated_frames:
-                            loaded_img_path = os.path.join(updated_folder, "frame_"+str(frame_to_mod_id)+".png")
-                        else:
-                            loaded_img_path = os.path.join(img_folder, "frame_"+str(frame_to_mod_id)+".png")
-                            print(loaded_img_path)
-                        
-                        img = cv2.imread(loaded_img_path)
-                        img_copy = copy.deepcopy(img)
-
-                        mins = int(x_min_disp), int(y_min_disp)
-                        maxs = int(x_max_disp), int(y_max_disp)
-                        img_copy = cv2.rectangle(img_copy, mins, maxs, bb_color, 5)
-                        
-                        # Draw a smaller rectangle for ID label
-                        id_label = f"ID: {track_id}"
-                        label_size, _ = cv2.getTextSize(id_label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-                        label_width, label_height = label_size
-
-                        # Place the label at the top-left corner inside the bounding box
-                        #label_position = (x_min, y_min - 10)
-                        label_bg_end = (int(x_min) + int(label_width) + 20, int(y_min) - int(label_height) - 20)
-                        img_copy = cv2.rectangle(img_copy, (int(x_min), int(y_min) - 5), label_bg_end, bb_color, -1)  # -1 for filled rectangle
-                        img_copy = cv2.putText(img_copy, id_label, (int(x_min) + 10, int(y_min) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                    
-                        out_path = os.path.join(updated_folder, "frame_"+str(frame_to_mod_id)+".png")
-                
-                        cv2.imwrite(out_path, img_copy)
-                        print(f"img {frame_to_mod_id} has been updated, added detection of track {track_id}")
-                        updated_frames.append(frame_to_mod_id)
-
-                else:
-                    if actual_frame not in updated_frames and actual_frame not in copied_frames:
-                        loaded_img_path = os.path.join(img_folder, "frame_"+str(actual_frame)+".png")
-                        img = cv2.imread(loaded_img_path)
-                        img_copy = copy.deepcopy(img)
-                        out_path = os.path.join(updated_folder, "frame_"+str(actual_frame)+".png")
-                        cv2.imwrite(out_path, img_copy)
-                        copied_frames.append(actual_frame)
-
-
-                last_frame = actual_frame
-                i_last_frame = i
-
-        print("FINISHED UPDATING TRACKS")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # NON-MAXIMUM SUPRESSION
 # (No MameS) XD  XDDDDDD
 # TAKEN FROM (https://medium.com/analytics-vidhya/non-max-suppression-nms-6623e6572536)
@@ -459,7 +356,6 @@ def nms(detections, conf_threshold, iou_threshold):
     # Stage1: Sort boxes and filter out boxes with low confidence
     detections_sorted  = sorted(detections, reverse=True, key = lambda x : x.score)
     for detection in detections_sorted:
-        print(detection.score, conf_threshold)
         if detection.score > conf_threshold:
             detection_list_thresholded.append(detection)
     
@@ -476,7 +372,8 @@ def nms(detections, conf_threshold, iou_threshold):
     return detection_list_new
 
 
-
+# TAKEN FROM:
+# https://github.com/amusi/Non-Maximum-Suppression/blob/master/nms.py
 def nms_otaku(detections, threshold):
     
     bounding_boxes = []

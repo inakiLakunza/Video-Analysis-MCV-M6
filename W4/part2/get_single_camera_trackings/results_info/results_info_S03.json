@@ -1,0 +1,95 @@
+[
+    {},
+    {
+        "TRY_NAME": "th02_mskip10_iou05",
+        "FINE_TUNED": false,
+        "DETECTION_THRESHOLD": 0.2,
+        "MIN_IOU": 0.5,
+        "MAX_FRAMES_SKIP": 10,
+        "BB_THICKNESS": 3,
+        "SEQUENCE_ROOT_PATH": "./../../frame_dataset_PNG/",
+        "SEQUENCE_NUMBER": 3,
+        "OUT_CSV_ROOT_PATH": "./out_csv/",
+        "WRITE_CSV": true,
+        "OUT_IMG_ROOT_PATH": "./out_imgs/",
+        "OUT_IMG_FOLDER": "./out_imgs/3/th02_mskip10_iou05",
+        "WRITE_PKL": true,
+        "cam_times": {
+            "c015": 0.9736976623535156,
+            "c014": 0.755551815032959,
+            "c011": 0.7046644687652588,
+            "c013": 0.6845064163208008,
+            "c010": 0.7003679275512695,
+            "c012": 0.6588623523712158
+        }
+    },
+    {
+        "TRY_NAME": "th02_mskip10_iou05",
+        "FINE_TUNED": false,
+        "DETECTION_THRESHOLD": 0.2,
+        "MIN_IOU": 0.5,
+        "MAX_FRAMES_SKIP": 10,
+        "BB_THICKNESS": 3,
+        "SEQUENCE_ROOT_PATH": "./../../frame_dataset_PNG/",
+        "SEQUENCE_NUMBER": 3,
+        "OUT_CSV_ROOT_PATH": "./out_csv/",
+        "WRITE_CSV": true,
+        "OUT_IMG_ROOT_PATH": "./out_imgs/",
+        "OUT_IMG_FOLDER": "./out_imgs/3/th02_mskip10_iou05",
+        "WRITE_PKL": true,
+        "cam_times": {
+            "c015": 1.0225105285644531,
+            "c014": 0.7368743419647217,
+            "c011": 0.7333014011383057,
+            "c013": 0.7297041416168213,
+            "c010": 0.7527756690979004,
+            "c012": 0.7324469089508057
+        }
+    },
+    {
+        "TRY_NAME": "th02_mskip10_iou05",
+        "FINE_TUNED": false,
+        "DETECTION_THRESHOLD": 0.2,
+        "MIN_IOU": 0.5,
+        "MAX_FRAMES_SKIP": 10,
+        "BB_THICKNESS": 3,
+        "SEQUENCE_ROOT_PATH": "./../../frame_dataset_PNG/",
+        "SEQUENCE_NUMBER": 3,
+        "OUT_CSV_ROOT_PATH": "./out_csv/",
+        "WRITE_CSV": true,
+        "OUT_IMG_ROOT_PATH": "./out_imgs/",
+        "OUT_IMG_FOLDER": "./out_imgs/3/th02_mskip10_iou05",
+        "WRITE_PKL": true,
+        "cam_times": {
+            "c015": 0.8030722141265869,
+            "c014": 0.6083512306213379,
+            "c011": 0.604860782623291,
+            "c013": 0.5931675434112549,
+            "c010": 0.6076087951660156,
+            "c012": 0.6267318725585938
+        }
+    },
+    {
+        "TRY_NAME": "th02_mskip10_iou05",
+        "FINE_TUNED": false,
+        "DETECTION_THRESHOLD": 0.2,
+        "MIN_IOU": 0.5,
+        "MAX_FRAMES_SKIP": 10,
+        "BB_THICKNESS": 3,
+        "SEQUENCE_ROOT_PATH": "./../../frame_dataset_PNG/",
+        "SEQUENCE_NUMBER": 3,
+        "OUT_CSV_ROOT_PATH": "./out_csv/",
+        "WRITE_CSV": true,
+        "OUT_IMG_ROOT_PATH": "./out_imgs/",
+        "OUT_IMG_FOLDER": "./out_imgs/3/th02_mskip10_iou05",
+        "WRITE_PKL": true,
+        "cam_times": {
+            "c015": 0.8614640235900879,
+            "c014": 0.6066102981567383,
+            "c011": 0.606165885925293,
+            "c013": 0.611492395401001,
+            "c010": 0.6173019409179688,
+            "c012": 0.6279816627502441
+        }
+    }
+]

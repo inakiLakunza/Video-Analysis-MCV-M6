@@ -9,6 +9,8 @@ import numpy as np
 import time
 from RAFT import main as raft_query
 
+import copy
+
 
 
 def compute_raft(im1_path: str, im2_path: str):
@@ -32,7 +34,7 @@ class Track():
         self.detections: list['Detection'] = [first_detection]
         self.frames: list[int] = [first_frame_id]
 
-        self.of_directions: list[tuple[float]] = [first_detection.get]
+        self.of_directions: list[tuple[float]] = [first_detection.get_of_direction()]
 
     def add_detection_and_frame_id(self, detection: 'Detection', frame_id: int) -> None:
         self.detections.append(detection)
@@ -162,7 +164,6 @@ class Detection():
         return iou
     
 
-
 class Movement_Forward():
 
     def __init__(self, track: Track, frame_id: int, detection: Detection):
@@ -173,6 +174,10 @@ class Movement_Forward():
 
         self.track_frame_ids = track.get_frames()
         self.track_of_list = track.get_of_directions()
+
+        self.line_len: int = 0
+        self.avg_flow_x: float = .0
+        self.avg_flow_y: float = .0
 
     def get_track(self) -> Track:
         return self.track
@@ -194,6 +199,59 @@ class Movement_Forward():
 
         reversed_track_of_list = self.track_of_list.copy()
         reversed_track_of_list.reverse()
+
+        avg_flow_x: float = .0
+        avg_flow_y: float = .0
+        counter: int = 0
+        for past_frame_id, past_of in zip(reversed_frame_ids, reversed_track_of_list):
+
+            frame_diff: int = self.frame_id - past_frame_id
+            if frame_diff > 20:
+                break
+
+            avg_flow_x += past_of[1]
+            avg_flow_y += past_of[0]
+            counter += 1
+
+        avg_flow_x, avg_flow_y /= counter
+
+        self.line_len = counter
+        self.avg_flow_x = avg_flow_x
+        self.avg_flow_y = avg_flow_y
+
+
+    def draw_movement_forward(self, img: np.ndarray, bb_thickness: int = 3) -> np.ndarray:
+
+        copy_img = copy.deepcopy(img)
+
+        detection = self.get_detection()
+        track_color = self.get_color()
+        bb_centroid_x, bb_centroid_y = detection.get_centroid
+
+        disp_x = self.avg_flow_x*self.line_len
+        disp_y = self.avg_flow_y*self.line_len
+
+        if disp_x<5 and disp_y<5:
+            return copy_img
+
+        start_point = (bb_centroid_y, bb_centroid_x)
+        end_point = (bb_centroid_y+disp_y, bb_centroid_x+disp_x)
+
+        line_thickness = 3
+  
+        # Using cv2.line() method 
+        # Draw a diagonal black line with thickness of 5 px 
+        copy_img = cv2.line(copy_img, start_point, end_point, track_color, line_thickness)
+
+        return copy_img
+        
+       
+
+
+
+
+
+
 
         
         

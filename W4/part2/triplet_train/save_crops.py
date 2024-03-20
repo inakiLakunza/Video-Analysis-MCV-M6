@@ -24,7 +24,7 @@ if __name__ == "__main__":
     GT_PATH_ROOT = "/ghome/group07/test/W3/task_2/train"
     FRAMES_PATH_ROOT = "/ghome/group07/test/W4/frame_dataset_PNG"
 
-    SEQUENCE = "4"
+    SEQUENCE = "1"
 
     cams_path = os.path.join(GT_PATH_ROOT, "S0"+SEQUENCE)
     videos: list[Path] = [os.path.join(cams_path, camera, "gt", "gt.txt") for camera in os.listdir(cams_path) if camera != ".DS_Store"]

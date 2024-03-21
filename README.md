@@ -86,3 +86,11 @@ This final week consisted in two separate tasks, first one was to estimate the v
     - Task 1.1: Rudimentary approach
     - Task 1.2: Modern approach
 - Task 2: Multi-Camera Tracking (MCT)
+
+#### Some example results
+
+##### Task 1.2 Moder Approach Animation from the log files
+<img src=https://github.com/mcv-m6-video/mcv-c6-2024-team6/assets/71498396/ec79bb83-8496-4500-8fa0-cb8bcd3d1fe2 width="400" height="auto">
+
+
+

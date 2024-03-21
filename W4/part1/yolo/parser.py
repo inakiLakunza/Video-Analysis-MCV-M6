@@ -26,6 +26,10 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--iou_threshold", default=0.7, help="IOU threshold for the model", type=float
     )
+    
+    parser.add_argument(
+        "--road_kind", default="S", choices=["C", "H", "S"], help="Modality of the road to keep the border cases", type=str
+    )
 
     return parser.parse_args()
 

@@ -88,7 +88,7 @@ if __name__ == '__main__':
     #config = json.load(f)
     generate_data_dicts = False
     generate_dataloader = False
-    train_model = True
+    train_model = False
 
     PATH_PARENT_DIRECTORY = "//ghome/group07/test/W4/part2/triplet_train/saved_crops"
     #PATH_TRAINING_SET = os.path.join(PATH_PARENT_DIRECTORY, "train2014")
@@ -240,7 +240,7 @@ if __name__ == '__main__':
     knn.fit(features_x, features_y)
     pred_labels = knn.predict(features_x)
     pred_labels = np.array(pred_labels)
-    display_tsne_plot(features_x, pred_labels, true_labels, title="KNN_Predicted_Embeddings_TSNE_50epochs_margin05_batch16")
+    display_tsne_plot(features_x, pred_labels, true_labels, title="KNN_Predicted_Embeddings_TSNE_50epochs_margin05_batch16_sin_label")
     accuracy_test = accuracy_score(features_y, pred_labels)  # Test data true labels
     #utils.plot_prec_rec_curve_multiclass(features_y, pred_labels, output="./precision_recall_plot.png", n_classes=80)
     print(f"Test Accuracy: {accuracy_test * 100:.2f}%")

@@ -16,6 +16,30 @@ from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 
 
+def map_labels_to_integers(labels, start):
+    labels = np.array(labels)
+    labels_copy = np.copy(labels)
+    unique_labels = sorted(set(labels_copy))
+    label_to_integer = {label: i+start for i, label in enumerate(unique_labels)}
+    mapped_labels = [label_to_integer[label] for label in labels]
+    return mapped_labels, unique_labels
+
+
+def map_labels_to_integers2(labels, start):
+    labels_copy = labels.copy()
+    unique_labels = []
+    label_to_integer = {}
+    count = start
+    for label in labels_copy:
+        if label not in label_to_integer:
+            label_to_integer[label] = count
+            unique_labels.append(label)
+            count += 1
+
+    mapped_labels = [label_to_integer[label] for label in labels]
+    return mapped_labels, unique_labels
+
+
 def get_number_of_imgs_in_folder(path: Path, format: str = "png") -> int:
     png_files = glob.glob(os.path.join(path, "*."+format))
     return len(png_files)

@@ -69,7 +69,7 @@ def display_tsne_plot(features_x, features_y, captions, title="TSNE"):
     plt.legend(bbox_to_anchor=(1.02, 0.5), loc='center left', borderaxespad=0., ncol=3)
     for _, row in label_positions.iterrows():
         plt.text(row['x'], row['y'], row['label'], horizontalalignment='center', verticalalignment='center', 
-                 fontsize=9, weight='bold', alpha=0.7)
+        fontsize=9, weight='bold', alpha=0.7)
     plt.tight_layout()
     plt.savefig(f'./{title.replace(" ", "_")}.png', dpi=300)
 

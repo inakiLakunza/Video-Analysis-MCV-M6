@@ -5,6 +5,8 @@
 * Carlos Boned
 * Marco Cordón
 
+Our final slides: [Link to Google Slides](https://docs.google.com/presentation/d/1R14EFnpQF_S54wvmZ-PL2Aki6zctgfgduNtRsQr8WNc/edit?usp=sharing)
+
 ## How to Run
 Install dependencies via a `requirements.txt` file.
 
@@ -74,6 +76,13 @@ On this week the main goal has been to estimate the optical flow of a video sequ
 ##### Task 1.3
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W3/task_1_3/gifs_and_imgs/normal_and_rect_530_650.gif" width="400" height="auto">
 
-
 ##### Task 2
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W3/task_2/gif_read_me.gif" width="400" height="auto">
+
+
+## Week 4: Speed estimation and Multi-Camera Tracking
+This final week consisted in two separate tasks, first one was to estimate the velocity, and the second one was to perform Multi-Camera Tracking (MCT).
+- Task 1: Speed Estimation
+    - Task 1.1: Rudimentary approach
+    - Task 1.2: Modern approach
+- Task 2: Multi-Camera Tracking (MCT)

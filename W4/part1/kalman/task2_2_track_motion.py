@@ -31,8 +31,8 @@ import raft
 os.environ["KERAS_BACKEND"] = "torch"  # Or "jax" or "torch"!
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-def compute_mps(y_min, a=-0.0045, b=0.4):
-    return b * np.exp(a * y_min)
+def compute_mps(y_max, a, b):
+    return b * np.exp(a * y_max)
 
 def moving_avg(data, window_size=5):
     if len(data) < window_size:
@@ -73,6 +73,8 @@ if __name__ == "__main__":
     FPS = 10
     meters_per_pixel = 0.05
     previous_centroids = {}
+    a=-0.0035
+    b=0.75
 
     model = "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml"
 
@@ -87,6 +89,7 @@ if __name__ == "__main__":
     id_motion = {}
     history_frames = {}
     velocities = {}
+    real_velocities = {}
 
     tracker = Sort(max_age=1, min_hits=3)
     for i in tqdm(range(N_FRAMES)):
@@ -118,7 +121,7 @@ if __name__ == "__main__":
             x_max = int(bbox[2])
             y_max = int(bbox[3])
 
-            if y_min < 100:
+            if y_max <= 175:
                 continue
 
             centroid = ((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
@@ -131,18 +134,22 @@ if __name__ == "__main__":
                 prev_cx, prev_cy = previous_centroids[identifier]
                 displacement = np.sqrt((centroid[0] - prev_cx)**2 + (centroid[1] - prev_cy)**2)
                 velocity = displacement * 10 # pixel/seconds
-                meters_per_pixel = compute_mps(y_min)
+                meters_per_pixel = compute_mps(y_max, a, b)
                 real_velocity = velocity * meters_per_pixel * 3.6 # km/h
                 if identifier in velocities:
                     velocities[identifier].append(real_velocity)
                 else:
                     velocities[identifier] = [real_velocity]
                 real_velocity = moving_avg(velocities[identifier], window_size=10)
+                if identifier in real_velocities:
+                    real_velocities[identifier].append(real_velocity)
+                else:
+                    real_velocities[identifier] = [real_velocity]
                 if real_velocity < 10:
                     continue
-                id_label = f"ID: {identifier} ({real_velocity:.4f} km/h)"
+                id_label = f"ID: {identifier} ({real_velocity:.4f} km/h) y_max: {y_max}"
             else:
-                id_label = f"ID: {identifier} (Stationary)"
+                id_label = f"ID: {identifier} (Stationary) y_max: {y_max}"
 
             previous_centroids[identifier] = centroid
 
@@ -165,7 +172,9 @@ if __name__ == "__main__":
         res.append(img)
         out_path = os.path.join(out_img_path, "frame_"+str(i)+".png")
         cv2.imwrite(out_path, img)
-    make_video(np.array(res))
+    title=f"a_{str(abs(a)).replace('.', '_')}_b_{str(abs(b)).replace('.', '_')}.mp4"
+    print(real_velocities)
+    make_video(np.array(res), title)
 
 
 

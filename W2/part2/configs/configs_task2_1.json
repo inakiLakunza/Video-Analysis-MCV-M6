@@ -5,6 +5,6 @@
     "max_frames_skip": 15,
 
     "bb_thickness": 5,
-    "out_img_path": "/ghome/group07/test/W2/part2/outs_imgs_2_1"
+    "out_img_path": "./../../outs_imgs_2_1"
 
 }

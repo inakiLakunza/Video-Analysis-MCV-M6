@@ -1,8 +1,5 @@
 import numpy as np
 
-from pycocotools.mask import toBbox
-
-
 class Track():
     def __init__(self, track_updater, first_detection, first_frame_id):
         self.id = track_updater.n_total_tracks
@@ -113,35 +110,6 @@ class Tracks_2_1():
 
     def update_tracks(self, new_detections, frame_id):
 
-
-        '''
-        live_tracks = []
-        for track in self.active_tracks:
-            last_detection, last_frame_id = track.get_last_detection_and_frame_id()
-
-            if frame_id - last_frame_id > self.max_not_detected_tracks_to_end:
-                self.n_ended_tracks += 1
-                self.ended_tracks.append(track)
-            else:
-                live_tracks.append(track)
-
-        # Compare live tracks
-        updated_live_tracks = []
-        for i, track1 in enumerate(live_tracks):
-            keep_track = True
-            for j, track2 in enumerate(live_tracks):
-                if i != j:  # Don't compare a track with itself
-                    if track1 == track2:
-                        if track1.get_last_frame_id() > track2.get_last_frame_id():
-                            keep_track = False
-                            break
-            if keep_track:
-                updated_live_tracks.append(track1)
-
-        self.active_tracks = updated_live_tracks
-        self.n_active_tracks = len(updated_live_tracks)
-        '''
-
         live_tracks = []
         for track in self.active_tracks:
             last_detection, last_frame_id = track.get_last_detection_and_frame_id()
@@ -156,8 +124,6 @@ class Tracks_2_1():
         self.n_active_tracks = len(live_tracks)
 
 
-
-        #new_tracks = []
         for detection in new_detections:
             best_iou, best_iou_index, best_detection = -1, -1, None
             #print("n_active tracks: ", self.n_active_tracks)
@@ -181,16 +147,12 @@ class Tracks_2_1():
             else:
                 self.new_track(frame_id, detection)
         
-        
-        # NOT NECESSARY, SINCE THE APPEND IS DONE IN THE new_track FUNCTION!!
-        #self.active_tracks.extend(new_tracks)
                 
         self.n_active_tracks = len(self.active_tracks)
         print(f"Number of active tracks: f{self.n_active_tracks}  , frame number: {frame_id}")
 
                         
 # NON-MAXIMUM SUPRESSION
-# (No MameS) XD  XDDDDDD
 # TAKEN FROM (https://medium.com/analytics-vidhya/non-max-suppression-nms-6623e6572536)
 def nms(detections, conf_threshold, iou_threshold):
     detection_list_thresholded = []

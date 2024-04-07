@@ -58,7 +58,7 @@ Our annotated sequence can be found at [/W2/part1/task_1_2/annotations.xml](http
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_2/task_2_1/gifs/video_task_2_1_det_th_05_1.gif" width="400" height="auto">
 
 ##### Kalman filtering:
-<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_2/task_2_2/gifs/out_det_05.gif" width="400" height="auto">
+<img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_2/task_2_2/out_det_05.gif" width="400" height="auto">
 
 ##### CVPR 2021 AI City Challenge
 <img src="https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W2/part2/task_3/results_and_gt/example_gif.gif" width="400" height="auto">

@@ -1,55 +1,67 @@
 """ Main script for training a video classification model on HMDB51 dataset. """
 
-import os
-import sys
-sys.path.append('./../..')
-sys.path.append('./../..')
-
 import argparse
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 from typing import Dict, Iterator
 
-import numpy as np
-
 from torch.utils.data import DataLoader
 
-from src.datasets.HMDB51Dataset import HMDB51Dataset
-from src.models import model_creator
-from src.utils import model_analysis
-from src.utils import statistics
+from datasets.HMDB51Dataset import HMDB51Dataset
+from models import model_creator
+from utils import model_analysis
+from utils import statistics
 
-import wandb
 
-def evaluate_with_windows(clip, window_size=4, overlap=0):
+def train(
+        model: nn.Module,
+        train_loader: DataLoader, 
+        optimizer: torch.optim.Optimizer, 
+        loss_fn: nn.Module,
+        device: str,
+        description: str = ""
+    ) -> None:
+    """
+    Trains the given model using the provided data loader, optimizer, and loss function.
 
-    assert window_size >= 4, "The minimum window size must be 4"
-    assert overlap < window_size, "The chosen overlap must be lower than the overlap, default values:\nWindow_size=4, overlap=0"
+    Args:
+        model (nn.Module): The neural network model to be trained.
+        train_loader (DataLoader): The data loader containing the training dataset.
+        optimizer (torch.optim.Optimizer): The optimizer used for updating model parameters.
+        loss_fn (nn.Module): The loss function used to compute the training loss.
+        device (str): The device on which the model and data should be processed ('cuda' or 'cpu').
+        description (str, optional): Additional information for tracking epoch description during training. Defaults to "".
 
-    bs, n_ch, n_frames, h, w = clip.shape
-
-    jump = window_size-overlap
-
-    all_softmax = []
-    all_outputs = []
-    for i in range(0, n_frames, jump):
-        # get window of window_size elements
-        if i+(window_size-1) >= n_frames: break
-        window = clip[:, :, i:i+window_size, :, :]
-        # compute the logits
-        outputs = model(window)  # (1, 51)
-        # add outputs to the output matrix
-        all_outputs.append(outputs)
-        # compute the softmax of the window
-        softmax = torch.nn.functional.softmax(outputs, dim=-1) # (1, 51) 
-        all_softmax.append(softmax)
-
-    # Retrieve wanted column information 
-    sum_of_probs = [sum(x) for x in zip(*all_softmax)]
-    avg_of_logits = [sum(x)/len(all_outputs) for x in zip(*all_outputs)]
-
-    return sum_of_probs, avg_of_logits
+    Returns:
+        None
+    """
+    model.train()
+    pbar = tqdm(train_loader, desc=description, total=len(train_loader))
+    loss_train_mean = statistics.RollingMean(window_size=len(train_loader))
+    hits = count = 0 # auxiliary variables for computing accuracy
+    for batch in pbar:
+        # Gather batch and move to device
+        clips, labels = batch['clips'].to(device), batch['labels'].to(device)
+        # Forward pass
+        outputs = model(clips)
+        # Compute loss
+        loss = loss_fn(outputs, labels)
+        # Backward pass
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        # Update progress bar with metrics
+        loss_iter = loss.item()
+        hits_iter = torch.eq(outputs.argmax(dim=1), labels).sum().item()
+        hits += hits_iter
+        count += len(labels)
+        pbar.set_postfix(
+            loss=loss_iter,
+            loss_mean=loss_train_mean(loss_iter),
+            acc=(float(hits_iter) / len(labels)),
+            acc_mean=(float(hits) / count)
+        )
 
 
 def evaluate(
@@ -57,7 +69,6 @@ def evaluate(
         valid_loader: DataLoader, 
         loss_fn: nn.Module,
         device: str,
-        epoch: int, 
         description: str = ""
     ) -> None:
     """
@@ -73,76 +84,30 @@ def evaluate(
     Returns:
         None
     """
-    
     model.eval()
-    for WINDOW_SIZE in range(4, 10):
-        for OVERLAP in range(WINDOW_SIZE):
-
-            pbar = tqdm(valid_loader, desc=description, total=len(valid_loader))
-            loss_valid_mean = statistics.RollingMean(window_size=len(valid_loader))
-            hits = count = 0 # auxiliary variables for computing accuracy
-            cont = (len(valid_loader)) * epoch + 1 if epoch is not None else 0
-            mean_loss = 0
-            acc_class_dict = {}
-            class_cont = {}
-            for batch in pbar:
-                # Gather batch and move to device
-                clips, labels = batch['clips'].to(device), batch['labels'].to(device)
-                # clips (batch_size, n_channels, clip-length, h, w)
-                # labels (1)
-
-                # WE WILL USE A BATCH SIZE OF 1, SO WE WILL JUST HAVE A CLIP
-                clip = clips
-                label = labels
-
-                # Forward pass
-                with torch.no_grad():
-
-                    
-                    sum_of_probs, avg_of_logits = evaluate_with_windows(clip, window_size=6, overlap=3)
-                    
-                    #print(label)
-                    #print(sum_of_probs)
-
-                    # Compute loss (just for logging, not used for backpropagation)
-                    loss = loss_fn(avg_of_logits[0], torch.Tensor(label[0])) 
-                    # Compute metrics
-                    loss_iter = loss.item()
-                    hits_iter = torch.eq(np.argmax((sum_of_probs)[0].cpu()), label.cpu()).sum().item()
-                    hits += hits_iter
-                    count += len(labels)
-                    # Update progress bar with metrics
-                    mean_loss = loss_valid_mean(loss_iter)
-
-
-                    acc_class_dict[label.item()] = acc_class_dict.get(label.item(), 0) + (float(hits_iter) / len(label))
-                    class_cont[label.item()] = class_cont.get(label.item(), 0) + 1
-
-                    #print("float(hits_iter): ", float(hits_iter))
-                    #print("len(labels): ", len(labels))
-                    #print("their division: ", float(hits_iter) / len(labels))
-
-
-                    pbar.set_postfix(
-                        loss=loss_iter,
-                        loss_mean=loss_valid_mean(loss_iter),
-                        acc=(float(hits_iter) / len(labels)),
-                        acc_mean=(float(hits) / count)
-                    )
-
-                    cont += 1
-
-
-            print("PRINTING RESULTS FOR THE FOLLOWING CONFIGURATION:")
-            print(f"Window size: {WINDOW_SIZE},   Overlap: {OVERLAP}")
-            print()
-            print(f'TEST ACCURACY = {(float(hits) / count)}')
-
-            print("\n\n ---------------\n\n")
-
-            #for k in acc_class_dict.keys():
-            #    print(f'KEY: {CLASS_NAMES[k]} ACC = {acc_class_dict[k] / class_cont[k]}')
-
+    pbar = tqdm(valid_loader, desc=description, total=len(valid_loader))
+    loss_valid_mean = statistics.RollingMean(window_size=len(valid_loader))
+    hits = count = 0 # auxiliary variables for computing accuracy
+    for batch in pbar:
+        # Gather batch and move to device
+        clips, labels = batch['clips'].to(device), batch['labels'].to(device)
+        # Forward pass
+        with torch.no_grad():
+            outputs = model(clips)
+            # Compute loss (just for logging, not used for backpropagation)
+            loss = loss_fn(outputs, labels) 
+            # Compute metrics
+            loss_iter = loss.item()
+            hits_iter = torch.eq(outputs.argmax(dim=1), labels).sum().item()
+            hits += hits_iter
+            count += len(labels)
+            # Update progress bar with metrics
+            pbar.set_postfix(
+                loss=loss_iter,
+                loss_mean=loss_valid_mean(loss_iter),
+                acc=(float(hits_iter) / len(labels)),
+                acc_mean=(float(hits) / count)
+            )
 
 
 def create_datasets(
@@ -176,8 +141,7 @@ def create_datasets(
             regime,
             clip_length,
             crop_size,
-            temporal_stride,
-            #window
+            temporal_stride
         )
     
     return datasets
@@ -273,17 +237,15 @@ def print_model_summary(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a video classification model on HMDB51 dataset.')
-    parser.add_argument('--frames_dir', type=str, default="/ghome/group07/test/W5/frames/",
+    parser.add_argument('frames_dir', type=str, default="frames",
                         help='Directory containing video files')
-    parser.add_argument('--annotations-dir', type=str, default="/ghome/group07/test/W5/data/hmdb51/testTrainMulti_601030_splits/",
+    parser.add_argument('--annotations-dir', type=str, default="data/hmdb51/testTrainMulti_601030_splits",
                         help='Directory containing annotation files')
-    # CLIP LENGTH CHANGED FROM 4 TO 12
-    parser.add_argument('--clip-length', type=int, default=12,
+    parser.add_argument('--clip-length', type=int, default=4,
                         help='Number of frames of the clips')
     parser.add_argument('--crop-size', type=int, default=182,
                         help='Size of spatial crops (squares)')
-    # TEMPORAL STRIDE CHANGED FROM 12 TO 4
-    parser.add_argument('--temporal-stride', type=int, default=4,
+    parser.add_argument('--temporal-stride', type=int, default=12,
                         help='Receptive field of the model will be (clip_length * temporal_stride) / FPS')
     parser.add_argument('--model-name', type=str, default='x3d_xs',
                         help='Model name as defined in models/model_creator.py')
@@ -295,42 +257,19 @@ if __name__ == "__main__":
                         help='Learning rate')
     parser.add_argument('--epochs', type=int, default=50,
                         help='Number of epochs')
-    parser.add_argument('--batch-size', type=int, default=1,
+    parser.add_argument('--batch-size', type=int, default=16,
                         help='Batch size for the training data loader')
-    parser.add_argument('--batch-size-eval', type=int, default=1,
+    parser.add_argument('--batch-size-eval', type=int, default=16,
                         help='Batch size for the evaluation data loader')
-    parser.add_argument('--validate-every', type=int, default=1,
+    parser.add_argument('--validate-every', type=int, default=5,
                         help='Number of epochs after which to validate the model')
-    parser.add_argument('--num-workers', type=int, default=1,
+    parser.add_argument('--num-workers', type=int, default=2,
                         help='Number of worker processes for data loading')
-    parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu',
+    parser.add_argument('--device', type=str, default='cuda',
                         help='Device to use for training (cuda or cpu)')
 
     args = parser.parse_args()
 
-    '''
-    wandb.login(key="34db2c5ef8832f040bb5001755f4aa5b64cf78fa",
-                relogin=True)
-    
-    wandb.init(
-        project = "C6-W5",
-        name = "train_task_b",
-        config={
-            "tokenizer": "character-level",
-            "epochs": args.epochs,
-            "batch_size": args.batch_size,
-            "batch_size_eval": args.batch_size_eval,
-            "optimizer": args.optimizer_name,
-            "learning_rate": args.lr
-        }
-    )
-
-    wandb.define_metric("train_loss", summary="min")
-    wandb.define_metric("val_loss", summary="min")
-
-    wandb.define_metric("train_acc", summary="max")
-    wandb.define_metric("val_acc", summary="max")
-    '''
     # Create datasets
     datasets = create_datasets(
         frames_dir=args.frames_dir,
@@ -349,34 +288,26 @@ if __name__ == "__main__":
         num_workers=args.num_workers
     )
 
-
-    CLASS_NAMES = [
-        "brush_hair", "catch", "clap", "climb_stairs", "draw_sword", "drink", 
-        "fall_floor", "flic_flac", "handstand", "hug", "kick", "kiss", "pick", 
-        "pullup", "push", "ride_bike", "run", "shoot_ball", "shoot_gun", "situp", 
-        "smoke", "stand", "sword", "talk", "turn", "wave", 
-        "cartwheel", "chew", "climb", "dive", "dribble", "eat", "fencing", 
-        "golf", "hit", "jump", "kick_ball", "laugh", "pour", "punch", "pushup", 
-        "ride_horse", "shake_hands", "shoot_bow", "sit", "smile", "somersault", 
-        "swing_baseball", "sword_exercise", "throw", "walk"
-    ]
-
-
-
     # Init model, optimizer, and loss function
     model = model_creator.create(args.model_name, args.load_pretrain, datasets["training"].get_num_classes())
     optimizer = create_optimizer(args.optimizer_name, model.parameters(), lr=args.lr)
     loss_fn = nn.CrossEntropyLoss()
 
-    #print_model_summary(model, args.clip_length, args.crop_size)
+    print_model_summary(model, args.clip_length, args.crop_size)
 
     model = model.to(args.device)
-    #wandb.watch(model, log_freq=100)
 
-    # LOAD MODEL
-    load_path = "/ghome/group07/test/W5/task_2/weights/task_b_500_epochs.pth"
-    model.load_state_dict(torch.load(load_path)['model_state_dict']) 
+    for epoch in range(args.epochs):
+        # Validation
+        if epoch % args.validate_every == 0:
+            description = f"Validation [Epoch: {epoch+1}/{args.epochs}]"
+            evaluate(model, loaders['validation'], loss_fn, args.device, description=description)
+        # Training
+        description = f"Training [Epoch: {epoch+1}/{args.epochs}]"
+        train(model, loaders['training'], optimizer, loss_fn, args.device, description=description)
+
     # Testing
-    evaluate(model, loaders['testing'], loss_fn, args.device, None, description=f"Testing")
+    evaluate(model, loaders['validation'], loss_fn, args.device, description=f"Validation [Final]")
+    evaluate(model, loaders['testing'], loss_fn, args.device, description=f"Testing")
 
     exit()

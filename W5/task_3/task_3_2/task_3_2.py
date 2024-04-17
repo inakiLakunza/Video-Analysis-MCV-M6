@@ -122,75 +122,80 @@ def evaluate(
         None
     """
     model.eval()
-    pbar = tqdm(valid_loader, desc=description, total=len(valid_loader))
-    loss_valid_mean = statistics.RollingMean(window_size=len(valid_loader))
-    hits = count = 0 # auxiliary variables for computing accuracy
-    cont = (len(valid_loader)) * epoch + 1 if epoch is not None else 0
-    mean_loss = 0
-    acc_class_dict = {}
-    class_cont = {}
-    for batch in pbar:
-        # Gather batch and move to device
-        clips, labels = batch['clips'].to(device), batch['labels'].to(device)
-        # clips (batch_size, n_channels, clip-length, h, w)
-        # labels (1)
+    for WINDOW_SIZE in range(4, 10):
+        for OVERLAP in range(WINDOW_SIZE):
+            pbar = tqdm(valid_loader, desc=description, total=len(valid_loader))
+            loss_valid_mean = statistics.RollingMean(window_size=len(valid_loader))
+            hits = count = 0 # auxiliary variables for computing accuracy
+            cont = (len(valid_loader)) * epoch + 1 if epoch is not None else 0
+            mean_loss = 0
+            acc_class_dict = {}
+            class_cont = {}
+            for batch in pbar:
+                # Gather batch and move to device
+                clips, labels = batch['clips'].to(device), batch['labels'].to(device)
+                # clips (batch_size, n_channels, clip-length, h, w)
+                # labels (1)
 
-        # WE WILL USE A BATCH SIZE OF 1, SO WE WILL JUST HAVE A CLIP
-        clip = clips
-        label = labels
+                # WE WILL USE A BATCH SIZE OF 1, SO WE WILL JUST HAVE A CLIP
+                clip = clips
+                label = labels
 
-        # Forward pass
-        with torch.no_grad():
+                # Forward pass
+                with torch.no_grad():
 
-            
-            sum_of_probs, avg_of_logits = evaluate_with_windows(clip, window_size=5, overlap=0, strategy=strategy)
-            
-            #print(label)
-            #print(sum_of_probs)
+                    
+                    sum_of_probs, avg_of_logits = evaluate_with_windows(clip, window_size=WINDOW_SIZE, overlap=OVERLAP, strategy=strategy)
+                    
+                    #print(label)
+                    #print(sum_of_probs)
 
-            # Compute loss (just for logging, not used for backpropagation)
-            loss = loss_fn(avg_of_logits[0], torch.Tensor(label[0])) 
-            # Compute metrics
-            loss_iter = loss.item()
-            hits_iter = torch.eq(np.argmax((sum_of_probs)[0].cpu()), label.cpu()).sum().item()
-            hits += hits_iter
-            count += len(labels)
-            # Update progress bar with metrics
-            mean_loss = loss_valid_mean(loss_iter)
-
-
-            acc_class_dict[label.item()] = acc_class_dict.get(label.item(), 0) + (float(hits_iter) / len(label))
-            class_cont[label.item()] = class_cont.get(label.item(), 0) + 1
-
-            #print("float(hits_iter): ", float(hits_iter))
-            #print("len(labels): ", len(labels))
-            #print("their division: ", float(hits_iter) / len(labels))
+                    # Compute loss (just for logging, not used for backpropagation)
+                    loss = loss_fn(avg_of_logits[0], torch.Tensor(label[0])) 
+                    # Compute metrics
+                    loss_iter = loss.item()
+                    hits_iter = torch.eq(np.argmax((sum_of_probs)[0].cpu()), label.cpu()).sum().item()
+                    hits += hits_iter
+                    count += len(labels)
+                    # Update progress bar with metrics
+                    mean_loss = loss_valid_mean(loss_iter)
 
 
-            pbar.set_postfix(
-                loss=loss_iter,
-                loss_mean=loss_valid_mean(loss_iter),
-                acc=(float(hits_iter) / len(labels)),
-                acc_mean=(float(hits) / count)
-            )
+                    acc_class_dict[label.item()] = acc_class_dict.get(label.item(), 0) + (float(hits_iter) / len(label))
+                    class_cont[label.item()] = class_cont.get(label.item(), 0) + 1
 
-            cont += 1
+                    #print("float(hits_iter): ", float(hits_iter))
+                    #print("len(labels): ", len(labels))
+                    #print("their division: ", float(hits_iter) / len(labels))
 
-    results = {}
-    counts = {}
-    for k in acc_class_dict.keys():
-        results[CLASS_NAMES[k]] = acc_class_dict[k] / class_cont[k]
-        counts[CLASS_NAMES[k]] = class_cont[k]
-        print(f'KEY: {CLASS_NAMES[k]} ACC = {acc_class_dict[k] / class_cont[k]}')
 
-    weighted_acc = 0
+                    pbar.set_postfix(
+                        loss=loss_iter,
+                        loss_mean=loss_valid_mean(loss_iter),
+                        acc=(float(hits_iter) / len(labels)),
+                        acc_mean=(float(hits) / count)
+                    )
 
-    total_counts = sum(counts.values())
+                    cont += 1
 
-    for k in results.keys():
-        weighted_acc += (results[k] * counts[k]) / total_counts
+            results = {}
+            counts = {}
+            for k in acc_class_dict.keys():
+                results[CLASS_NAMES[k]] = acc_class_dict[k] / class_cont[k]
+                counts[CLASS_NAMES[k]] = class_cont[k]
+                #print(f'KEY: {CLASS_NAMES[k]} ACC = {acc_class_dict[k] / class_cont[k]}')
 
-    print(f'WEIGHTED AVERAGE ACCURACY = {weighted_acc}')
+            weighted_acc = 0
+
+            total_counts = sum(counts.values())
+
+            for k in results.keys():
+                weighted_acc += (results[k] * counts[k]) / total_counts
+
+            print("PRINTING RESULTS FOR THE FOLLOWING CONFIGURATION:")
+            print(f"Strategy: {strategy}\nWindow size: {WINDOW_SIZE},   Overlap: {OVERLAP}")
+            print()
+            print(f'WEIGHTED AVERAGE ACCURACY = {weighted_acc}')
 
 
 

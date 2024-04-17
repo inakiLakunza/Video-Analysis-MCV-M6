@@ -105,14 +105,14 @@ We started working an improving the baseline training method given by the teache
 #### Some images
 ##### Task 3: Temporal windows and different spatial crops
 
-![task_3_pipeline](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/task_3_pipeline.jpg)
+![task_3_pipeline](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W5/example_imgs/task_3_pipeline.png)
 
-![task_3_heatmaps](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/heatmaps.jpg)
+![task_3_heatmaps](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W5/example_imgs/heatmaps.png)
 
 ##### Task 4: TSN implementation and custom improvement
 
-![TSN](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/improvement_1.jpg)
+![TSN](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W5/example_imgs/improvement_1.png)
 
-![custom_improvements](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/improvement_2.jpg)
+![custom_improvements](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W5/example_imgs/improvement_2.png)
 
 

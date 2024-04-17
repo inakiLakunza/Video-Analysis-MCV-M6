@@ -8,7 +8,7 @@ from typing import Dict, Iterator
 
 from torch.utils.data import DataLoader
 
-from datasets import HMDB51Dataset, TSNHMDB51Dataset
+from datasets import HMDB51Dataset, TSNHMDB51Dataset, FiveCropTSNHMDB51Dataset_renewed
 from models import model_creator
 from utils import model_analysis
 from utils import statistics
@@ -17,16 +17,6 @@ import wandb
 import os
 
 from callbacks import EarlyStopper, SaveBestModel
-
-import torch.optim.lr_scheduler as lr_scheduler
-
-
-
-def lr_lambda(epoch):
-    # LR to be 0.1 * (1/1+0.01*epoch)
-    base_lr = 0.1
-    factor = 0.01
-    return base_lr/(1+factor*epoch)
 
 
 
@@ -199,8 +189,8 @@ def create_datasets(
     datasets = {}
     
     #### Aquñi Hardcoded the dataset
-    for regime in TSNHMDB51Dataset.Regime:
-        datasets[regime.name.lower()] = TSNHMDB51Dataset(
+    for regime in FiveCropTSNHMDB51Dataset_renewed.Regime:
+        datasets[regime.name.lower()] = FiveCropTSNHMDB51Dataset_renewed(
             frames_dir,
             annotations_dir,
             split,
@@ -260,9 +250,9 @@ def create_optimizer(optimizer_name: str, parameters: Iterator[nn.Parameter], lr
         torch.optim.Optimizer: The optimizer for the model parameters.
     """
     if optimizer_name == "adam":
-        return torch.optim.AdamW(parameters, lr=lr, weight_decay=1e-2)
+        return torch.optim.Adam(parameters, lr=lr)
     elif optimizer_name == "sgd":
-        return torch.optim.SGD(parameters, lr=lr, weight_decay=1e-2)
+        return torch.optim.SGD(parameters, lr=lr)
     else:
         raise ValueError(f"Unknown optimizer name: {optimizer_name}")
 
@@ -327,7 +317,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--load-pretrain', action='store_true', default=False,
                     help='Load pretrained weights for the model (if available)')
-    parser.add_argument('--optimizer-name', type=str, default="sgd",
+    parser.add_argument('--optimizer-name', type=str, default="adam",
                         help='Optimizer name (supported: "adam" and "sgd" for now)')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='Learning rate')
@@ -373,7 +363,7 @@ if __name__ == "__main__":
     datasets = create_datasets(
         frames_dir=args.frames_dir,
         annotations_dir=args.annotations_dir,
-        split=TSNHMDB51Dataset.Split.TEST_ON_SPLIT_1, # hardcoded
+        split=FiveCropTSNHMDB51Dataset_renewed.Split.TEST_ON_SPLIT_1, # hardcoded
         clip_length=args.clip_length,
         crop_size=args.crop_size,
         temporal_stride=args.temporal_stride,
@@ -412,8 +402,6 @@ if __name__ == "__main__":
     # EARLY STOPPING
     early_stopper = EarlyStopper(save_path, patience=15, min_delta=0.)
     #==========================================
-    
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
     for epoch in range(args.epochs):
         # Validation

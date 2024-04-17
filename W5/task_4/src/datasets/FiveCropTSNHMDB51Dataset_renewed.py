@@ -1,5 +1,6 @@
 """ Dataset class for HMDB51 dataset. """
 
+import sys
 import os
 import random
 import numpy as np
@@ -12,9 +13,13 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 from torchvision.transforms import v2
+from torchvision.utils import save_image
+
+from PIL import Image
 
 
-class TSNHMDB51Dataset(Dataset):
+
+class FiveCropTSNHMDB51Dataset_renewed(Dataset):
     """
     Dataset class for HMDB51 dataset.
     """
@@ -94,7 +99,7 @@ class TSNHMDB51Dataset(Dataset):
         split_suffix = "_test_split" + str(self.split.value) + ".txt"
 
         annotation = []
-        for class_name in TSNHMDB51Dataset.CLASS_NAMES:
+        for class_name in FiveCropTSNHMDB51Dataset_renewed.CLASS_NAMES:
             annotation_file = os.path.join(self.annotations_dir, class_name + split_suffix)
             df = pd.read_csv(annotation_file, sep=" ").dropna(axis=1, how='all') # drop empty columns
             df.columns = ['video_name', 'train_or_test']
@@ -102,7 +107,7 @@ class TSNHMDB51Dataset(Dataset):
             df = df.rename(columns={'video_name': 'video_path'})
             df['video_path'] = os.path.join(self.videos_dir, class_name, '') + df['video_path'].replace('\.avi$', '', regex=True)
             df = df.rename(columns={'train_or_test': 'class_id'})
-            df['class_id'] = TSNHMDB51Dataset.CLASS_NAMES.index(class_name)
+            df['class_id'] = FiveCropTSNHMDB51Dataset_renewed.CLASS_NAMES.index(class_name)
             annotation += [df]
 
         return pd.concat(annotation, ignore_index=True)
@@ -115,20 +120,18 @@ class TSNHMDB51Dataset(Dataset):
         Returns:
             v2.Compose: Transform for the dataset.
         """
-        if self.regime == TSNHMDB51Dataset.Regime.TRAINING:
+        if self.regime == FiveCropTSNHMDB51Dataset_renewed.Regime.TRAINING:
             return v2.Compose([
                 v2.RandomResizedCrop(self.crop_size),
                 v2.RandomHorizontalFlip(p=0.5),
-                v2.FiveCrop(self.crop_size),
-                v2.Lambda(lambda crops: torch.stack([v2.PILToTensor()(crop) for crop in crops])),
                 v2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
                 v2.ToDtype(torch.float32, scale=True),
                 v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
         else:
+            ## WTF evaluar amb VenterCrop?
             return v2.Compose([
                 v2.Resize(self.crop_size), # Shortest side of the frame to be resized to the given size
-                v2.CenterCrop(self.crop_size),
                 v2.ToDtype(torch.float32, scale=True),
                 v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
@@ -141,7 +144,7 @@ class TSNHMDB51Dataset(Dataset):
         Returns:
             int: Number of classes.
         """
-        return len(TSNHMDB51Dataset.CLASS_NAMES)
+        return len(FiveCropTSNHMDB51Dataset_renewed.CLASS_NAMES)
 
 
     def __len__(self) -> int:
@@ -219,13 +222,24 @@ class TSNHMDB51Dataset(Dataset):
         # [(clip1, label1, path1), (clip2, label2, path2), ...] 
         #   -> ([clip1, clip2, ...], [label1, label2, ...], [path1, path2, ...])
         unbatched_clips, unbatched_labels,  paths = zip(*batch)
- 
+        
+        
         # Apply transformation and permute dimensions: (T, C, H, W) -> (C, T, H, W)  [(S, T, C, H, W)]
         transformed_clips = [self.transform(clip).permute(0, 2, 1, 3, 4) for clip in unbatched_clips]
+            
+        final_transfored_clips = []
+        for cl in transformed_clips:
+            crops = v2.functional.five_crop(cl, self.crop_size)
+            print(crops.shape)
+            sys.exit()
+            tt = torch.stack([torch.stack([v2.PILToTensor()(crop) for crop in crops])]).view(1, 5*self.n_segments, 3, self.clip_length, self.crop_size, self.crop_size)
+            final_transfored_clips.append(tt)
+
         # Concatenate clips along the batch dimension: 
         # B * [(C, T, H, W)] -> B * [(1, C, T, H, W)] -> (B, C, T, H, W)
-        batched_clips = torch.cat([d for d in transformed_clips], dim=0)
-        
+        batched_clips = torch.cat([d for d in final_transfored_clips], dim=0)
+        batched_clips = batched_clips.view(batched_clips.shape[0]*batched_clips.shape[1], 3, -1, self.crop_size, self.crop_size)
+
         return dict(
             clips=batched_clips, # (B, C, T, H, W)
             labels=torch.tensor(unbatched_labels), # (K,)

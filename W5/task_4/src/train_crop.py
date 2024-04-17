@@ -8,7 +8,7 @@ from typing import Dict, Iterator
 
 from torch.utils.data import DataLoader
 
-from datasets import HMDB51Dataset, TSNHMDB51Dataset
+from datasets import HMDB51Dataset, TSNHMDB51Dataset, FiveCropTSNHMDB51Dataset
 from models import model_creator
 from utils import model_analysis
 from utils import statistics
@@ -27,6 +27,7 @@ def lr_lambda(epoch):
     base_lr = 0.1
     factor = 0.01
     return base_lr/(1+factor*epoch)
+
 
 
 
@@ -63,17 +64,20 @@ def train(
         # Gather batch and move to device
         clips, labels = batch['clips'].to(device), batch['labels'].to(device)
         # Forward pass
-        outputs = model(clips).view(labels.shape[0], clips.shape[0] // labels.shape[0], -1 )
+        outputs = model(clips).view(labels.shape[0], 5, clips.shape[0] // (labels.shape[0]*5), -1 )
+
         outputs_aggregated = torch.mean(outputs, dim=1)
+        final_outputs, _ = torch.max(outputs_aggregated, dim=1)
+
         # Compute loss
-        loss = loss_fn(outputs_aggregated, labels)
+        loss = loss_fn(final_outputs, labels)
         # Backward pass
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
         # Update progress bar with metrics
         loss_iter = loss.item()
-        hits_iter = torch.eq(outputs_aggregated.argmax(dim=1), labels).sum().item()
+        hits_iter = torch.eq(final_outputs.argmax(dim=1), labels).sum().item()
         hits += hits_iter
         count += len(labels)
         mean_loss = loss_train_mean(loss_iter)
@@ -134,13 +138,16 @@ def evaluate(
         with torch.no_grad():
             #clips = clips.view(-1, 3, 1, clips.shape[3], clips.shape[4])
             outputs = model(clips).view(labels.shape[0], clips.shape[0] // labels.shape[0], -1 )
+            outputs = model(clips).view(labels.shape[0], 5, clips.shape[0] // (labels.shape[0] * 5), -1 )
+
             outputs_aggregated = torch.mean(outputs, dim=1)
+            final_outputs, _ = torch.max(outputs_aggregated, dim=1)
             
             # Compute loss (just for logging, not used for backpropagation)
-            loss = loss_fn(outputs_aggregated, labels) 
+            loss = loss_fn(final_outputs, labels) 
             # Compute metrics
             loss_iter = loss.item()
-            hits_iter = torch.eq(outputs_aggregated.argmax(dim=1), labels).sum().item()
+            hits_iter = torch.eq(final_outputs.argmax(dim=1), labels).sum().item()
             hits += hits_iter
             count += len(labels)
             # Update progress bar with metrics
@@ -199,8 +206,8 @@ def create_datasets(
     datasets = {}
     
     #### Aquñi Hardcoded the dataset
-    for regime in TSNHMDB51Dataset.Regime:
-        datasets[regime.name.lower()] = TSNHMDB51Dataset(
+    for regime in FiveCropTSNHMDB51Dataset.Regime:
+        datasets[regime.name.lower()] = FiveCropTSNHMDB51Dataset(
             frames_dir,
             annotations_dir,
             split,
@@ -247,6 +254,7 @@ def create_dataloaders(
     return dataloaders
 
 
+
 def create_optimizer(optimizer_name: str, parameters: Iterator[nn.Parameter], lr: float = 1e-4) -> torch.optim.Optimizer:
     """
     Creates an optimizer for the given parameters.
@@ -265,7 +273,6 @@ def create_optimizer(optimizer_name: str, parameters: Iterator[nn.Parameter], lr
         return torch.optim.SGD(parameters, lr=lr, weight_decay=1e-2)
     else:
         raise ValueError(f"Unknown optimizer name: {optimizer_name}")
-
 
 def print_model_summary(
         model: nn.Module,
@@ -306,6 +313,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a video classification model on HMDB51 dataset.')
     parser.add_argument('--frames_dir', type=str, 
                         help='Directory containing video files')
+    
     parser.add_argument('--annotations-dir', type=str, default="data/hmdb51/testTrainMulti_601030_splits",
                         help='Directory containing annotation files')
     
@@ -327,11 +335,12 @@ if __name__ == "__main__":
     
     parser.add_argument('--load-pretrain', action='store_true', default=False,
                     help='Load pretrained weights for the model (if available)')
-    parser.add_argument('--optimizer-name', type=str, default="sgd",
+    
+    parser.add_argument('--optimizer-name', type=str, default="adam",
                         help='Optimizer name (supported: "adam" and "sgd" for now)')
-    parser.add_argument('--lr', type=float, default=1e-4,
+    parser.add_argument('--lr', type=float, default=1e-3,
                         help='Learning rate')
-    parser.add_argument('--epochs', type=int, default=50,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='Number of epochs')
     parser.add_argument('--batch-size', type=int, default=16,
                         help='Batch size for the training data loader')
@@ -352,7 +361,7 @@ if __name__ == "__main__":
     
     wandb.init(
         project = "C6-W5",
-        name = "train_task_d",
+        name = "train_task_d_adam_finetunne_all",
         config={
             "tokenizer": "character-level",
             "epochs": args.epochs,
@@ -373,7 +382,7 @@ if __name__ == "__main__":
     datasets = create_datasets(
         frames_dir=args.frames_dir,
         annotations_dir=args.annotations_dir,
-        split=TSNHMDB51Dataset.Split.TEST_ON_SPLIT_1, # hardcoded
+        split=FiveCropTSNHMDB51Dataset.Split.TEST_ON_SPLIT_1, # hardcoded
         clip_length=args.clip_length,
         crop_size=args.crop_size,
         temporal_stride=args.temporal_stride,
@@ -404,16 +413,14 @@ if __name__ == "__main__":
     # SAVE BEST MODEL
     SAVE_FOLDER = "./weights"
     os.makedirs(SAVE_FOLDER, exist_ok=True)
-    SAVE_NAME = "task_d_300_epochs_average_votting_3seg_8_clip.pth"
+    SAVE_NAME = "task_d_300_epochs_average_votting_3seg_8_clip_padding_finetunning.pth"
     save_path = os.path.join(SAVE_FOLDER, SAVE_NAME)
     print("Best model will be saved in the following path:\n", save_path)
     save_best_model = SaveBestModel(save_path)
 
     # EARLY STOPPING
-    early_stopper = EarlyStopper(save_path, patience=15, min_delta=0.)
+    early_stopper = EarlyStopper(save_path, patience=5, min_delta=0.)
     #==========================================
-    
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
     for epoch in range(args.epochs):
         # Validation
@@ -436,7 +443,7 @@ if __name__ == "__main__":
 
 
     # Testing
-    evaluate(model, loaders['validation'], loss_fn, args.device, description=f"Validation [Final]")
-    evaluate(model, loaders['testing'], loss_fn, args.device, description=f"Testing")
+    evaluate(model, loaders['validation'], loss_fn, args.device, epoch=epoch, description=f"Validation [Final]")
+    evaluate(model, loaders['testing'], loss_fn, args.device, epoch=epoch, description=f"Testing")
 
     exit()

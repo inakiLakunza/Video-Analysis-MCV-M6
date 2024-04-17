@@ -1,5 +1,9 @@
 """ Main script for training a video classification model on HMDB51 dataset. """
 
+import os
+import sys
+sys.path.append('./..')
+
 import argparse
 import torch
 import torch.nn as nn
@@ -8,95 +12,16 @@ from typing import Dict, Iterator
 
 from torch.utils.data import DataLoader
 
-from datasets import HMDB51Dataset, TSNHMDB51Dataset
-from models import model_creator
-from utils import model_analysis
-from utils import statistics
+from datasets import HMDB51Dataset, FiveCropTSNHMDB51Dataset, TSNHMDB51Dataset
+from src.models import model_creator
+from src.utils import model_analysis
+from src.utils import statistics
 
 import wandb
-import os
 
 from callbacks import EarlyStopper, SaveBestModel
 
-import torch.optim.lr_scheduler as lr_scheduler
 
-
-
-def lr_lambda(epoch):
-    # LR to be 0.1 * (1/1+0.01*epoch)
-    base_lr = 0.1
-    factor = 0.01
-    return base_lr/(1+factor*epoch)
-
-
-
-def train(
-        model: nn.Module,
-        train_loader: DataLoader, 
-        optimizer: torch.optim.Optimizer, 
-        loss_fn: nn.Module,
-        device: str,
-        epoch:int,
-        description: str = ""
-    ) -> None:
-    """
-    Trains the given model using the provided data loader, optimizer, and loss function.
-
-    Args:
-        model (nn.Module): The neural network model to be trained.
-        train_loader (DataLoader): The data loader containing the training dataset.
-        optimizer (torch.optim.Optimizer): The optimizer used for updating model parameters.
-        loss_fn (nn.Module): The loss function used to compute the training loss.
-        device (str): The device on which the model and data should be processed ('cuda' or 'cpu').
-        description (str, optional): Additional information for tracking epoch description during training. Defaults to "".
-
-    Returns:
-        None
-    """
-    model.train()
-    pbar = tqdm(train_loader, desc=description, total=len(train_loader))
-    loss_train_mean = statistics.RollingMean(window_size=len(train_loader))
-    hits = count = 0 # auxiliary variables for computing accuracy
-    cont = (len(train_loader)) * epoch + 1 if epoch is not None else 0
-
-    for batch in pbar:
-        # Gather batch and move to device
-        clips, labels = batch['clips'].to(device), batch['labels'].to(device)
-        # Forward pass
-        outputs = model(clips).view(labels.shape[0], clips.shape[0] // labels.shape[0], -1 )
-        outputs_aggregated = torch.mean(outputs, dim=1)
-        # Compute loss
-        loss = loss_fn(outputs_aggregated, labels)
-        # Backward pass
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-        # Update progress bar with metrics
-        loss_iter = loss.item()
-        hits_iter = torch.eq(outputs_aggregated.argmax(dim=1), labels).sum().item()
-        hits += hits_iter
-        count += len(labels)
-        mean_loss = loss_train_mean(loss_iter)
-
-        pbar.set_postfix(
-            loss=loss_iter,
-            loss_mean=loss_train_mean(loss_iter),
-            acc=(float(hits_iter) / len(labels)),
-            acc_mean=(float(hits) / count)
-        )
-        
-        if epoch:
-            wandb.log({"epoch": epoch+1, 
-                       "step": cont+1, 
-                       "train_running_loss": loss_train_mean(loss_iter),
-                       "train_loss": loss_iter, 
-                       "train_acc": (float(hits_iter) / len(labels))}
-                    )
-        cont += 1
-    
-    if epoch: wandb.log({"epoch": epoch+1, "epoch_avg_train_loss": mean_loss, "epoch_avg_train_acc": (float(hits) / count)})
-    
-    return mean_loss
 
 
 def evaluate(
@@ -104,7 +29,7 @@ def evaluate(
         valid_loader: DataLoader, 
         loss_fn: nn.Module,
         device: str,
-        epoch:int,
+        epoch: int, 
         description: str = ""
     ) -> None:
     """
@@ -129,23 +54,23 @@ def evaluate(
     for batch in pbar:
         # Gather batch and move to device
         clips, labels = batch['clips'].to(device), batch['labels'].to(device)
-
         # Forward pass
         with torch.no_grad():
-            #clips = clips.view(-1, 3, 1, clips.shape[3], clips.shape[4])
-            outputs = model(clips).view(labels.shape[0], clips.shape[0] // labels.shape[0], -1 )
-            outputs_aggregated = torch.mean(outputs, dim=1)
+            outputs = model(clips)#.view(labels.shape[0], clips.shape[0] // labels.shape[0], -1 )
+            print(outputs.shape)
+            exit()
+            final_outputs = torch.mean(outputs, dim=1)
             
+            #final_outputs, _ = torch.max(outputs_aggregated, dim=1)
             # Compute loss (just for logging, not used for backpropagation)
-            loss = loss_fn(outputs_aggregated, labels) 
+            loss = loss_fn(final_outputs, labels) 
             # Compute metrics
             loss_iter = loss.item()
-            hits_iter = torch.eq(outputs_aggregated.argmax(dim=1), labels).sum().item()
+            hits_iter = torch.eq(final_outputs.argmax(dim=1), labels).sum().item()
             hits += hits_iter
             count += len(labels)
             # Update progress bar with metrics
             mean_loss = loss_valid_mean(loss_iter)
-
             pbar.set_postfix(
                 loss=loss_iter,
                 loss_mean=loss_valid_mean(loss_iter),
@@ -153,24 +78,13 @@ def evaluate(
                 acc_mean=(float(hits) / count)
             )
 
-
-            if epoch:
-                wandb.log({"epoch": epoch+1, 
-                           "step": cont+1, 
-                           "val_running_loss": loss_valid_mean(loss_iter),
-                           "val_loss": loss_iter, 
-                           "val_acc": (float(hits_iter) / len(labels))}
-                        )
-
             cont += 1
-            
-    # Mean loss for current epoch
-    if epoch: wandb.log({"epoch": epoch+1, "epoch_avg_val_loss": mean_loss, "epoch_avg_val_acc": (float(hits) / count)})
     
-    if epoch is None: epoch = 1
-    early_stopper.early_stop(mean_loss, model, optimizer, epoch)
+    # Mean loss for current epoch
+    wandb.log({"testing_loss": mean_loss, "testing_acc": (float(hits) / count)})
+        
+    print(f'TEST ACCURACY = {(float(hits) / count)}')
 
-    return mean_loss
 
 
 def create_datasets(
@@ -179,9 +93,8 @@ def create_datasets(
         split: HMDB51Dataset.Split,
         clip_length: int,
         crop_size: int,
-        temporal_stride: int,
-        n_segments: int
-) -> Dict[str, TSNHMDB51Dataset]:
+        temporal_stride: int
+) -> Dict[str, HMDB51Dataset]:
     """
     Creates datasets for training, validation, and testing.
 
@@ -197,18 +110,15 @@ def create_datasets(
         Dict[str, HMDB51Dataset]: A dictionary containing the datasets for training, validation, and testing.
     """
     datasets = {}
-    
-    #### Aquñi Hardcoded the dataset
-    for regime in TSNHMDB51Dataset.Regime:
-        datasets[regime.name.lower()] = TSNHMDB51Dataset(
+    for regime in HMDB51Dataset.Regime:
+        datasets[regime.name.lower()] = HMDB51Dataset(
             frames_dir,
             annotations_dir,
             split,
             regime,
             clip_length,
             crop_size,
-            temporal_stride,
-            n_segments
+            temporal_stride
         )
     
     return datasets
@@ -260,9 +170,9 @@ def create_optimizer(optimizer_name: str, parameters: Iterator[nn.Parameter], lr
         torch.optim.Optimizer: The optimizer for the model parameters.
     """
     if optimizer_name == "adam":
-        return torch.optim.AdamW(parameters, lr=lr, weight_decay=1e-2)
+        return torch.optim.Adam(parameters, lr=lr)
     elif optimizer_name == "sgd":
-        return torch.optim.SGD(parameters, lr=lr, weight_decay=1e-2)
+        return torch.optim.SGD(parameters, lr=lr)
     else:
         raise ValueError(f"Unknown optimizer name: {optimizer_name}")
 
@@ -304,30 +214,22 @@ def print_model_summary(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a video classification model on HMDB51 dataset.')
-    parser.add_argument('--frames_dir', type=str, 
+    parser.add_argument('--frames_dir', type=str, default="/ghome/group07/test/W5/frames/",
                         help='Directory containing video files')
-    parser.add_argument('--annotations-dir', type=str, default="data/hmdb51/testTrainMulti_601030_splits",
+    parser.add_argument('--annotations-dir', type=str, default="/ghome/group07/test/W5/data/hmdb51/testTrainMulti_601030_splits/",
                         help='Directory containing annotation files')
-    
     parser.add_argument('--clip-length', type=int, default=4,
                         help='Number of frames of the clips')
-    
     parser.add_argument('--crop-size', type=int, default=182,
                         help='Size of spatial crops (squares)')
     
     parser.add_argument('--temporal-stride', type=int, default=12,
                         help='Receptive field of the model will be (clip_length * temporal_stride) / FPS')
-    
-    parser.add_argument("--n_segments", type=int, default=6,
-                        help='Receptive field of the model will be (clip_length * temporal_stride) / FPS'
-                        )
-    
     parser.add_argument('--model-name', type=str, default='x3d_xs',
                         help='Model name as defined in models/model_creator.py')
-    
     parser.add_argument('--load-pretrain', action='store_true', default=False,
                     help='Load pretrained weights for the model (if available)')
-    parser.add_argument('--optimizer-name', type=str, default="sgd",
+    parser.add_argument('--optimizer-name', type=str, default="adam",
                         help='Optimizer name (supported: "adam" and "sgd" for now)')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='Learning rate')
@@ -337,22 +239,22 @@ if __name__ == "__main__":
                         help='Batch size for the training data loader')
     parser.add_argument('--batch-size-eval', type=int, default=16,
                         help='Batch size for the evaluation data loader')
-    parser.add_argument('--validate-every', type=int, default=5,
+    parser.add_argument('--validate-every', type=int, default=1,
                         help='Number of epochs after which to validate the model')
-    parser.add_argument('--num-workers', type=int, default=2,
+    parser.add_argument('--num-workers', type=int, default=1,
                         help='Number of worker processes for data loading')
-    parser.add_argument('--device', type=str, default='cuda',
+    parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu',
                         help='Device to use for training (cuda or cpu)')
 
     args = parser.parse_args()
-    
-    
+
+
     wandb.login(key="34db2c5ef8832f040bb5001755f4aa5b64cf78fa",
                 relogin=True)
     
     wandb.init(
         project = "C6-W5",
-        name = "train_task_d",
+        name = "train_task_b",
         config={
             "tokenizer": "character-level",
             "epochs": args.epochs,
@@ -368,16 +270,15 @@ if __name__ == "__main__":
 
     wandb.define_metric("train_acc", summary="max")
     wandb.define_metric("val_acc", summary="max")
-    
+
     # Create datasets
     datasets = create_datasets(
         frames_dir=args.frames_dir,
         annotations_dir=args.annotations_dir,
-        split=TSNHMDB51Dataset.Split.TEST_ON_SPLIT_1, # hardcoded
+        split=HMDB51Dataset.Split.TEST_ON_SPLIT_1, # hardcoded
         clip_length=args.clip_length,
         crop_size=args.crop_size,
-        temporal_stride=args.temporal_stride,
-        n_segments = args.n_segments
+        temporal_stride=args.temporal_stride
     )
 
     # Create data loaders
@@ -396,47 +297,18 @@ if __name__ == "__main__":
     print_model_summary(model, args.clip_length, args.crop_size)
 
     model = model.to(args.device)
-    #wandb.watch(model, log_freq=100)
+    wandb.watch(model, log_freq=100)
 
-
-    # CALLBACKS
-    #==========================================
-    # SAVE BEST MODEL
-    SAVE_FOLDER = "./weights"
-    os.makedirs(SAVE_FOLDER, exist_ok=True)
-    SAVE_NAME = "task_d_300_epochs_average_votting_3seg_8_clip.pth"
-    save_path = os.path.join(SAVE_FOLDER, SAVE_NAME)
-    print("Best model will be saved in the following path:\n", save_path)
-    save_best_model = SaveBestModel(save_path)
-
-    # EARLY STOPPING
-    early_stopper = EarlyStopper(save_path, patience=15, min_delta=0.)
-    #==========================================
-    
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda)
-
-    for epoch in range(args.epochs):
-        # Validation
-        if epoch % args.validate_every == 0:
-            description = f"Validation [Epoch: {epoch+1}/{args.epochs}]"
-             # Preguntar Demà
-            val_loss = evaluate(model, loaders['validation'], loss_fn, args.device, epoch=epoch, description=description)
-            # Stop if patience is ended
-            if early_stopper.get_stop(): 
-                break       
-       
-        # Training
-        description = f"Training [Epoch: {epoch+1}/{args.epochs}]"
-        train(model, loaders['training'], optimizer, loss_fn, args.device, epoch=epoch, description=description)
-
-
-    # SAVE WEIGHTS OF THE BEST MODEL
-    save_best_model.save(val_loss, model, optimizer, args.epochs)
-
-
-
-    # Testing
-    evaluate(model, loaders['validation'], loss_fn, args.device, description=f"Validation [Final]")
-    evaluate(model, loaders['testing'], loss_fn, args.device, description=f"Testing")
+    # LOAD MODEL
+    weights_dir = '/ghome/group07/test/W5/task_4/weights/'
+    for weights_file in os.listdir(weights_dir):
+        load_path = os.path.join(weights_dir, weights_file)
+        if weights_file.startswith('best_val'):
+            model.load_state_dict(torch.load(load_path))
+        else:
+            checkpoint = torch.load(load_path) 
+            model.load_state_dict(checkpoint['model_state_dict']) 
+        print(f"======================== {weights_file} =====================")
+        evaluate(model, loaders['testing'], loss_fn, args.device, None, description=f"Testing")
 
     exit()

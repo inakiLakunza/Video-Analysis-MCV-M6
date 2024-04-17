@@ -97,3 +97,22 @@ This final week consisted in two separate tasks, first one was to estimate the v
 
 
 
+## Week 5: Action Recognition
+During this week we started with a new part of the project, which belongs to the University of Barcelona. We have worked with X3D-X6 model (the smallest one of the X3D family) in the HMDB51 Dataset.
+
+We started working an improving the baseline training method given by the teacher. Then we added Multi-View Inference, first adding analysis by temporal windows and afterwards combining it with different spatial crops. Finally, we implemented the multi-view training strategy of [TSN](https://arxiv.org/pdf/1608.00859.pdf), along with some custom improvements.
+
+#### Some images
+## Task 3: Temporal windows and different spatial crops
+
+![task_3_pipeline](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/task_3_pipeline.png)
+
+![task_3_heatmaps](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/heatmaps.png)
+
+## Task 4: TSN implementation and custom improvement
+
+![TSN](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/improvement_1.png)
+
+![custom_improvements](https://github.com/mcv-m6-video/mcv-c6-2024-team6/tree/main/W5/example_imgs/improvement_2.png)
+
+

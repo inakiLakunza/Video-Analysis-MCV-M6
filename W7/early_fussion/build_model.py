@@ -106,7 +106,7 @@ def buildAddedLayerResNetRGBOF(new_in_channels, load_pretrain, num_classes):
         nn.BatchNorm3d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
         nn.ReLU()
     )
-
+    # OUTPUT SHAPE: (batch_size, 3, 8, 224, 224)
 
 
     # TAKE OUT LAST LAYER AND ADEQUATE IT

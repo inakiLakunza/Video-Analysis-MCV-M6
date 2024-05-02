@@ -5,7 +5,11 @@
 * Carlos Boned
 * Marco Cordón
 
-Our final slides: [Link to Google Slides](https://docs.google.com/presentation/d/1R14EFnpQF_S54wvmZ-PL2Aki6zctgfgduNtRsQr8WNc/edit?usp=sharing)
+Final slides: 
+
+- Part 1: [Link to Google Slides part 1](https://docs.google.com/presentation/d/1R14EFnpQF_S54wvmZ-PL2Aki6zctgfgduNtRsQr8WNc/edit?usp=sharing)
+
+- Part 2: [Link to Google Slides part 2](https://docs.google.com/presentation/d/1h8Kzy6xpP4Zjnm_cwTqMZAASYlCs1FcJ5b0cF8cXIhM/edit?usp=sharing)
 
 ## How to Run
 Install dependencies via a `requirements.txt` file.
@@ -114,5 +118,23 @@ We started working an improving the baseline training method given by the teache
 ![TSN](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W5/example_imgs/improvement_1.png)
 
 ![custom_improvements](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W5/example_imgs/improvement_2.png)
+
+
+
+## Week 6: Implementing alternative models 
+During this week we had to change the previous week's model architectures to further improve the results. We tried very different implementations so to see which was the best working one.
+
+Afterwards, we had to analyze the importance of temporal dynamics, proving if temporal information was necessary or not. Our work in this task was divided into two braches: shuffling the clips in order to look at the change in performance, and, on the other hand, using 2D nets to analyze each frame individually.
+
+#### Bubble plot of the tried architectures in the first task:
+![bubble_plot](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W6/task_1/bubble_plot_slide.png)
+
+
+
+## Week 7: Multimodality
+The work of the final week was divided in two tasks: First we have to measure the performance of different modalities such as Optical flow, RGB difference and Skeleton extraction on their own. Afterwards, the second task consisted on mixing RGB information and alternative information. In this second task we analyzed different fussion methods: early fussion and late fussion.
+
+#### Conclusions slide
+![W7_conclusions](https://github.com/mcv-m6-video/mcv-c6-2024-team6/blob/main/W7/conclusion_slide.png)
 
 

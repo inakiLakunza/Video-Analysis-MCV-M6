@@ -357,7 +357,7 @@ if __name__ == "__main__":
                         help='Optimizer name (supported: "adam" and "sgd" for now)')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='Learning rate')
-    parser.add_argument('--epochs', type=int, default=250,
+    parser.add_argument('--epochs', type=int, default=50,
                         help='Number of epochs')
     parser.add_argument('--batch-size', type=int, default=16,
                         help='Batch size for the training data loader')
@@ -418,17 +418,23 @@ if __name__ == "__main__":
 
     # Init model, optimizer, and loss function
     
-    # X3D_XS
+    # RESNET
     if args.model.lower() == "resnet":
         model = build_model.create('x3d_xs', args.load_pretrain, datasets["training"].get_num_classes(), 
                                    new_in_channels=5)
-    # RESNET
+    # X3D XS
     elif args.model.lower() == "x3d":  
         model = build_model.create('3d_resnet', args.load_pretrain, datasets["training"].get_num_classes(), 
                                new_in_channels=5)
-        
+
+    # MODIFIED RESNET 
     elif args.model.lower() == "modified_resnet":  
         model = build_model.create('modified_resnet', args.load_pretrain, datasets["training"].get_num_classes(), 
+                               new_in_channels=5)
+    
+    # MODIFIED RESNET 
+    elif args.model.lower() == "modified_x3d":  
+        model = build_model.create('modified_x3d', args.load_pretrain, datasets["training"].get_num_classes(), 
                                new_in_channels=5)
     
     optimizer = create_optimizer(args.optimizer_name, model.parameters(), lr=args.lr)
@@ -454,6 +460,8 @@ if __name__ == "__main__":
         SAVE_NAME = "resnet_raft_resnet_pretrained_all_layers_no_freeze.pth"
     elif args.model.lower() == 'modified_resnet':
         SAVE_NAME = "modified_resnet_raft_resnet_pretrained_all_layers_no_freeze.pth"
+    elif args.model.lower() == 'modified_x3d':
+        SAVE_NAME = "modified_x3d_raft_resnet_pretrained_all_layers_no_freeze.pth"
     save_path = os.path.join(SAVE_FOLDER, SAVE_NAME)
     print("Best model will be saved in the following path:\n", save_path)
     save_best_model = SaveBestModel(save_path)

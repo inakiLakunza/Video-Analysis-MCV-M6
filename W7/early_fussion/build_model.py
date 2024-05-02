@@ -128,6 +128,42 @@ def buildAddedLayerResNetRGBOF(new_in_channels, load_pretrain, num_classes):
     #==================================================
 
 
+def buildAddedLayerX3DRGBOF(new_in_channels, load_pretrain, num_classes):
+    
+    backbone = torch.hub.load('facebookresearch/pytorchvideo', 'x3d_xs', pretrained=True)
+    
+    # INPUT SHAPE: (batch_size, 5[RGB_3+OF_2], 8[len of clip-1, 224, 224])
+    # UPSAMPLE CHANNELS AND DOWNSAMPLE AFTERWARDS TO 3
+    inverted_bottleneck = nn.Sequential(
+        nn.Conv3d(new_in_channels, 16, kernel_size=(1, 7, 7), stride=(1, 1, 1), bias=False),
+        nn.BatchNorm3d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+        nn.ReLU(),
+        nn.Conv3d(16, 3, kernel_size=1, stride=1),
+        nn.BatchNorm3d(3, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+        nn.ReLU()
+    )
+    # OUTPUT SHAPE: (batch_size, 3, 8, 224, 224)
+
+
+    # TAKE OUT LAST LAYER AND ADEQUATE IT
+    #==================================================
+    backbone.blocks[5].proj = nn.Identity()
+    # # freeze layers
+    # for param in backbone.parameters():
+    #     param.requires_grad = False
+
+    # WE WANT TO HAVE A GRADIENT ON THE INPUT LAYER
+    backbone.blocks[0].conv.conv_t.requires_grad_ = True
+
+    return nn.Sequential(
+        inverted_bottleneck,
+        backbone,
+        nn.Linear(2048, num_classes, bias=True),
+    )
+
+    #==================================================
+
+
 
 def create(model_name: str, load_pretrain: bool, num_classes: int, new_in_channels: int =5) -> nn.Module:
     if model_name == 'x3d_xs':
@@ -136,6 +172,8 @@ def create(model_name: str, load_pretrain: bool, num_classes: int, new_in_channe
         return buildResNetRGBOF(new_in_channels, load_pretrain, num_classes)
     elif model_name == 'modified_resnet':
         return buildAddedLayerResNetRGBOF(new_in_channels, load_pretrain, num_classes)
+    elif model_name == 'modified_x3d':
+        return buildAddedLayerX3DRGBOF(new_in_channels, load_pretrain, num_classes)
 
     else:
         raise ValueError(f"Model {model_name} not supported")
